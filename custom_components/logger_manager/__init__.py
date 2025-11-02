@@ -21,6 +21,59 @@ SCHEMA = vol.Schema({
     vol.Required("loggers"): [str],
 })
 
+# Test schema (no parameters needed)
+TEST_SCHEMA = vol.Schema({})
+
+
+async def async_test_logger_discovery(call: ServiceCall) -> None:
+    """Test service to validate logger discovery approach."""
+    hass = call.hass
+    
+    try:
+        # This is the exact code we want to validate
+        logger_dict = logging.Logger.manager.loggerDict
+        
+        _LOGGER.info("🔍 Logger Discovery Test Starting...")
+        _LOGGER.info(f"Raw logger_dict size: {len(logger_dict)}")
+        
+        # Get all string logger names
+        all_loggers = [name for name in logger_dict.keys() if isinstance(name, str)]
+        _LOGGER.info(f"String logger names: {len(all_loggers)}")
+        
+        # Sample by categories
+        ha_loggers = [name for name in all_loggers if "homeassistant" in name]
+        custom_loggers = [name for name in all_loggers if "custom_components" in name]
+        lib_loggers = [name for name in all_loggers if name in ["asyncio", "aiohttp", "urllib3"]]
+        
+        _LOGGER.info(f"HA loggers found: {len(ha_loggers)}")
+        _LOGGER.info(f"Custom component loggers: {len(custom_loggers)}")
+        _LOGGER.info(f"Library loggers: {len(lib_loggers)}")
+        
+        # Log samples
+        _LOGGER.info(f"Sample HA loggers: {sorted(ha_loggers)[:5]}")
+        _LOGGER.info(f"Custom component loggers: {sorted(custom_loggers)}")
+        _LOGGER.info(f"First 10 overall: {sorted(all_loggers)[:10]}")
+        
+        # Create test result sensor
+        hass.states.async_set("sensor.logger_discovery_test", len(all_loggers), {
+            "total_loggers": len(all_loggers),
+            "ha_loggers": len(ha_loggers),
+            "custom_loggers": len(custom_loggers),
+            "sample_ha": sorted(ha_loggers)[:10],
+            "sample_custom": sorted(custom_loggers),
+            "sample_all": sorted(all_loggers)[:20],
+            "test_time": datetime.now().isoformat(),
+        })
+        
+        _LOGGER.info("✅ Logger discovery test completed successfully")
+        
+    except Exception as e:
+        _LOGGER.error(f"❌ Logger discovery test failed: {e}", exc_info=True)
+        hass.states.async_set("sensor.logger_discovery_test", "error", {
+            "error": str(e),
+            "test_time": datetime.now().isoformat(),
+        })
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Logger Manager integration."""
@@ -128,7 +181,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         except Exception as e:
             _LOGGER.error(f"Failed to persist logger state: {e}")
     
-    # Register our service
+    # Register our services
     hass.services.async_register(DOMAIN, "apply_levels", handle_apply_levels)
+    hass.services.async_register(DOMAIN, "test_logger_discovery", async_test_logger_discovery, schema=TEST_SCHEMA)
     
     return True
