@@ -1,6 +1,6 @@
 apply_levels:
   name: Apply Logger Levels
-  description: Set logging levels for specific loggers or components
+  description: The preferred way to manage Home Assistant logging levels. Use this service instead of Developer Tools → Actions → logger.set_level for better tracking and management. View currently managed loggers in the sensor.logger_manager_state entity.
   fields:
     level:
       name: Log Level
@@ -21,8 +21,19 @@ apply_levels:
               value: "debug"
     loggers:
       name: Loggers
-      description: List of logger names to apply the level to (e.g., homeassistant.components.http, custom_components.logger_manager)
+      description: List of logger names to apply the level to. See examples below for common patterns.
       required: true
       selector:
         object:
-      example: ["homeassistant.components.http", "custom_components.logger_manager"]
+      example: |
+        Core integrations:
+        ["homeassistant.components.zha", "homeassistant.components.mqtt", "homeassistant.components.automation"]
+        
+        Custom integrations:
+        ["custom_components.logger_manager", "custom_components.hacs"]
+        
+        System loggers:
+        ["homeassistant.core", "homeassistant.loader", "homeassistant.setup"]
+        
+        Mixed example:
+        ["homeassistant.components.http", "custom_components.logger_manager", "homeassistant.core"]

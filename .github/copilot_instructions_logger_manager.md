@@ -187,7 +187,44 @@ Add a new service defined in `services.yaml` and registered in `__init__.py`.
 
 ---
 
-## Milestone 5 — Release & HACS Prep
+## Milestone 5 — UX Enhancement (Authoritative Logger Management)
+
+**Philosophy**: "Logger Manager should be the authoritative and preferred way to manage HA logging levels"
+
+**Objective**: Make this integration so easy to use that users wouldn't need or want to modify logging levels outside of our service.
+
+**Core Strategy**: Track and manage only the loggers we've modified, rather than trying to discover all possible loggers. Become the authoritative source for logger level management.
+
+**Enhancements**:
+
+1. **Service Documentation Enhancement**
+   - Update `services.yaml` with comprehensive examples of common logger patterns
+   - Include core integrations: `["homeassistant.components.zha", "homeassistant.components.mqtt"]`
+   - Include custom components: `["custom_components.logger_manager", "custom_components.hacs"]`
+   - Include system loggers: `["homeassistant.core", "homeassistant.loader"]`
+   - Reference sensor for viewing current managed state
+
+2. **Sensor Enhancement - Managed State Authority**
+   - Track loggers that our service has modified (not all possible loggers)
+   - Add `managed_loggers` attribute showing what we're actively controlling
+   - Add `last_updated` timestamp for change tracking
+   - Focus on state management rather than discovery
+
+3. **Service Behavior - Track Our Changes**
+   - When `apply_levels` is called, update both HA logger levels AND our managed list
+   - Maintain authoritative record of what we control
+   - No external polling needed - we are the source of truth for our changes
+
+4. **Documentation Strategy**
+   - Position as the primary/preferred logging management tool
+   - Provide migration examples from manual `logger.set_level` usage
+   - Emphasize ease of use over Developer Tools → Actions
+
+**Success Criteria**: Users prefer our service over manual logger configuration. Clear visibility into managed vs. available loggers.
+
+---
+
+## Milestone 6 — Release & HACS Prep
 
 - Tag version `v0.1.0`
 - Add badges (version, license) to `README.md`
@@ -196,7 +233,7 @@ Add a new service defined in `services.yaml` and registered in `__init__.py`.
 
 ---
 
-## Milestone 6 — Future Enhancements
+## Milestone 7 — Future Enhancements
 
 - Lovelace card for selecting levels and loggers
 - Presets and “reset to defaults” actions

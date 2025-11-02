@@ -6,5 +6,6 @@
   "issue_tracker": "https://github.com/gunnjr/ha-logger-manager/issues",
   "requirements": [],
   "codeowners": ["@gunnjr"],
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "config_flow": false
 }

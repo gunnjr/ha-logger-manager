@@ -1,7 +1,7 @@
 """Logger Manager sensor platform."""
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
 from homeassistant.components.sensor import SensorEntity
@@ -13,6 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=10)
 DOMAIN = "logger"  # built-in HA logger integration
+LOGGER_MANAGER_DOMAIN = "logger_manager"  # our integration domain
 
 
 async def async_setup_platform(
@@ -36,6 +37,13 @@ class LoggerInspectorSensor(SensorEntity):
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the sensor."""
         self.hass = hass
+        # Initialize managed loggers tracking
+        if LOGGER_MANAGER_DOMAIN not in self.hass.data:
+            self.hass.data[LOGGER_MANAGER_DOMAIN] = {}
+        if "managed_loggers" not in self.hass.data[LOGGER_MANAGER_DOMAIN]:
+            self.hass.data[LOGGER_MANAGER_DOMAIN]["managed_loggers"] = {}
+        if "last_updated" not in self.hass.data[LOGGER_MANAGER_DOMAIN]:
+            self.hass.data[LOGGER_MANAGER_DOMAIN]["last_updated"] = None
 
     def update(self) -> None:
         """Update the sensor state."""
@@ -47,6 +55,9 @@ class LoggerInspectorSensor(SensorEntity):
                 "default": "unavailable",
                 "loggers": {},
                 "count": 0,
+                "managed_loggers": {},
+                "managed_count": 0,
+                "last_updated": None,
                 "error": "Logger data not found"
             }
             return
@@ -59,6 +70,11 @@ class LoggerInspectorSensor(SensorEntity):
             # Get the settings object
             settings = getattr(data, 'settings', None)
             overrides = getattr(data, 'overrides', {})
+            
+            # Get our managed loggers data
+            managed_data = self.hass.data.get(LOGGER_MANAGER_DOMAIN, {})
+            managed_loggers = managed_data.get("managed_loggers", {})
+            last_updated = managed_data.get("last_updated")
             
             if settings:
                 # Get default level from settings
@@ -80,6 +96,9 @@ class LoggerInspectorSensor(SensorEntity):
                 "default": default_str,
                 "loggers": dict(sorted(loggers_dict.items())),
                 "count": len(loggers_dict),
+                "managed_loggers": dict(sorted(managed_loggers.items())),
+                "managed_count": len(managed_loggers),
+                "last_updated": last_updated,
             }
             
         except Exception as e:
@@ -88,5 +107,8 @@ class LoggerInspectorSensor(SensorEntity):
             self._attr_extra_state_attributes = {
                 "error": str(e),
                 "data_type": str(type(data)),
+                "managed_loggers": {},
+                "managed_count": 0,
+                "last_updated": None,
                 "available_attrs": [attr for attr in dir(data) if not attr.startswith('_')]
             }
