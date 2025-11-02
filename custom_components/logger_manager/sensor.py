@@ -51,43 +51,27 @@ class LoggerInspectorSensor(SensorEntity):
             }
             return
             
-        # Debug: log the type and available attributes
-        _LOGGER.debug(f"Logger data type: {type(data)}")
-        _LOGGER.debug(f"Logger data attributes: {dir(data)}")
-        
-    def update(self) -> None:
-        """Update the sensor state."""
-        data = self.hass.data.get(DOMAIN)
-        
-        if data is None:
-            self._attr_native_value = "unavailable"
-            self._attr_extra_state_attributes = {
-                "default": "unavailable",
-                "loggers": {},
-                "count": 0,
-                "error": "Logger data not found"
-            }
-            return
-            
         try:
-            # LoggerDomainConfig has these attributes based on HA source:
-            # - default_level: the default log level
-            # - filters: dict of logger name -> level overrides
+            # LoggerDomainConfig has:
+            # - overrides: dict[str, Any] - current logger level overrides
+            # - settings: LoggerSettings - contains default level and stored config
             
-            default_level = getattr(data, 'default_level', 'unknown')
-            filters = getattr(data, 'filters', {})
+            # Get the settings object
+            settings = getattr(data, 'settings', None)
+            overrides = getattr(data, 'overrides', {})
             
-            # Convert level from logging constants to string if needed
-            if hasattr(default_level, 'name'):
-                default_str = default_level.name.lower()
+            if settings:
+                # Get default level from settings
+                default_level = getattr(settings, '_default_level', logging.INFO)
+                default_str = logging.getLevelName(default_level).lower()
             else:
-                default_str = str(default_level).lower()
+                default_str = "unknown"
                 
-            # Convert filters to string format
+            # Convert overrides to readable format
             loggers_dict = {}
-            for logger_name, level in filters.items():
-                if hasattr(level, 'name'):
-                    loggers_dict[logger_name] = level.name.lower()
+            for logger_name, level in overrides.items():
+                if isinstance(level, int):
+                    loggers_dict[logger_name] = logging.getLevelName(level).lower()
                 else:
                     loggers_dict[logger_name] = str(level).lower()
                     
