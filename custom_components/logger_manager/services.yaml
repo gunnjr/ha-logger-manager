@@ -1,0 +1,28 @@
+apply_levels:
+  name: Apply Logger Levels
+  description: Set logging levels for specific loggers or components
+  fields:
+    level:
+      name: Log Level
+      description: The logging level to apply
+      required: true
+      selector:
+        select:
+          options:
+            - label: "Critical"
+              value: "critical"
+            - label: "Error"
+              value: "error"
+            - label: "Warning"
+              value: "warning"
+            - label: "Info"
+              value: "info"
+            - label: "Debug"
+              value: "debug"
+    loggers:
+      name: Loggers
+      description: List of logger names to apply the level to (e.g., homeassistant.components.http, custom_components.logger_manager)
+      required: true
+      selector:
+        object:
+      example: ["homeassistant.components.http", "custom_components.logger_manager"]
