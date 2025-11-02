@@ -42,7 +42,30 @@ class LoggerManagerCard extends HTMLElement {
     const sensor = this._hass.states['sensor.logger_levels'];
     if (!sensor || !sensor.attributes) return [];
     
-    return sensor.attributes.available_loggers || [];
+    // The sensor no longer stores the full list in attributes (DB size limit)
+    // Instead, we'll use the sample data or implement a service call
+    // For now, use the samples to demonstrate the concept
+    const samples = sensor.attributes.logger_samples || {};
+    const loggers = [
+      ...(samples.homeassistant_sample || []),
+      ...(samples.custom_sample || []),
+      ...(samples.library_sample || [])
+    ];
+    
+    // Add some common loggers that users often need
+    const common_loggers = [
+      "homeassistant.core",
+      "homeassistant.components", 
+      "homeassistant.components.automation",
+      "homeassistant.components.script",
+      "homeassistant.components.template",
+      "homeassistant.helpers",
+      "custom_components.logger_manager"
+    ];
+    
+    // Combine and dedupe
+    const allLoggers = [...new Set([...loggers, ...common_loggers])];
+    return allLoggers.sort();
   }
 
   // Get current level for a logger

@@ -75,6 +75,10 @@ class LoggerInspectorSensor(SensorEntity):
             _LOGGER.warning(f"Error discovering loggers: {e}")
             return []
 
+    def get_available_loggers(self) -> list[str]:
+        """Public method for UI to get full logger list without storing in attributes."""
+        return self._discover_available_loggers()
+
     def update(self) -> None:
         """Update the sensor state."""
         data = self.hass.data.get(DOMAIN)
@@ -87,8 +91,8 @@ class LoggerInspectorSensor(SensorEntity):
                 "count": 0,
                 "managed_loggers": {},
                 "managed_count": 0,
-                "available_loggers": [],
                 "available_count": 0,
+                "logger_samples": {},
                 "last_updated": None,
                 "error": "Logger data not found"
             }
@@ -126,16 +130,23 @@ class LoggerInspectorSensor(SensorEntity):
                 self.hass.data[LOGGER_MANAGER_DOMAIN]["managed_loggers"] = cleaned_managed
                 managed_loggers = cleaned_managed
             
-            # Get available loggers for the UI
+            # Get available loggers count (don't store full list to avoid DB size limits)
             available_loggers = self._discover_available_loggers()
+            
+            # Store small sample for debugging, not full list
+            sample_loggers = {
+                "homeassistant_sample": [l for l in available_loggers if l.startswith("homeassistant")][:5],
+                "custom_sample": [l for l in available_loggers if l.startswith("custom_components")][:5],
+                "library_sample": [l for l in available_loggers if not l.startswith(("homeassistant", "custom_components"))][:3]
+            }
                     
             self._attr_native_value = default_str
             self._attr_extra_state_attributes = {
                 "default": default_str,
                 "managed_loggers": dict(sorted(managed_loggers.items())),
                 "managed_count": len(managed_loggers),
-                "available_loggers": available_loggers,
                 "available_count": len(available_loggers),
+                "logger_samples": sample_loggers,
                 "last_updated": last_updated,
             }
             
@@ -147,8 +158,8 @@ class LoggerInspectorSensor(SensorEntity):
                 "data_type": str(type(data)),
                 "managed_loggers": {},
                 "managed_count": 0,
-                "available_loggers": [],
                 "available_count": 0,
+                "logger_samples": {},
                 "last_updated": None,
                 "available_attrs": [attr for attr in dir(data) if not attr.startswith('_')]
             }
