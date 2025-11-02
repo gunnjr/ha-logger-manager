@@ -1,6 +1,6 @@
 apply_levels:
   name: Apply Logger Levels
-  description: The preferred way to manage Home Assistant logging levels. Use this service instead of Developer Tools → Actions → logger.set_level for better tracking and management. View currently managed loggers in the sensor.logger_manager_state entity.
+  description: The preferred way to manage Home Assistant logging levels. Use this service instead of Developer Tools → Actions → logger.set_level for better tracking and management. View currently managed loggers in the sensor.logger_manager_state entity. Note that Home Assistant accepts any logger name, including invalid/non-existent ones. Invalid loggers can be removed by setting them to the default level.
   fields:
     level:
       name: Log Level

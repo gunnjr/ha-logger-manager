@@ -89,64 +89,33 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # Call Home Assistant's built-in logger service
         await hass.services.async_call("logger", "set_level", mapping, blocking=True)
         
-        # Post-validate: check what actually got set
-        logger_data = hass.data.get("logger")
-        actual_overrides = getattr(logger_data, 'overrides', {}) if logger_data else {}
-        
-        # Debug: log what we found in actual overrides
-        _LOGGER.debug(f"Post-validation: HA logger overrides contains {len(actual_overrides)} entries: {list(actual_overrides.keys())}")
-        
-        # Track only loggers that were actually set
-        successfully_set = []
-        failed_loggers = []
-        
-        for logger_name in logger_names:
-            # Check if the logger was actually set to our requested level
-            if logger_name in actual_overrides:
-                # Convert the actual level to string for comparison
-                actual_level_int = actual_overrides[logger_name]
-                # Use proper level name conversion - getLevelName with int returns the string name
-                if isinstance(actual_level_int, int):
-                    actual_level_str = logging.getLevelName(actual_level_int).lower()
-                else:
-                    actual_level_str = str(actual_level_int).lower()
-                _LOGGER.debug(f"Post-validation: {logger_name} found with level {actual_level_str} (requested {level})")
-                if actual_level_str == level.lower():
-                    successfully_set.append(logger_name)
-                else:
-                    failed_loggers.append(logger_name)
-                    _LOGGER.warning(f"Logger '{logger_name}' was set but to unexpected level '{actual_level_str}' instead of '{level}'")
-            else:
-                failed_loggers.append(logger_name)
-                _LOGGER.debug(f"Post-validation: {logger_name} NOT found in HA overrides")
-                _LOGGER.warning(f"Failed to set logger level for '{logger_name}' - logger may not exist or setting failed")
+        # Note: HA's logger service accepts any logger name, even invalid/non-existent ones.
+        # It will create overrides for non-existent loggers which have no effect but are tracked.
+        # This matches HA's built-in behavior. Users can remove invalid loggers by setting 
+        # them to the default level, which will trigger auto-cleanup in the sensor.
         
         # Smart debug logging continued
-        if our_integration in successfully_set:
+        if our_integration in logger_names:
             # Log AFTER if changing TO debug (so debug message appears)
             if level.lower() == "debug":
                 _LOGGER.debug(f"Setting {our_integration} to {level}")
                 # Also log other integrations now that debug is active
-                for logger_name in successfully_set:
+                for logger_name in logger_names:
                     if logger_name != our_integration:
                         _LOGGER.debug(f"Setting {logger_name} to {level}")
         else:
-            # Log for other integrations only (our integration wasn't in the successful list)
-            for logger_name in successfully_set:
+            # Log for other integrations only (our integration wasn't in the list)
+            for logger_name in logger_names:
                 if logger_name != our_integration:
                     _LOGGER.debug(f"Setting {logger_name} to {level}")
         
-        # Track only the loggers we successfully managed
+        # Track all loggers we requested (matches HA's behavior)
         managed_data = hass.data[DOMAIN]
-        for logger_name in successfully_set:
+        for logger_name in logger_names:
             managed_data["managed_loggers"][logger_name] = level
         managed_data["last_updated"] = datetime.now().isoformat()
         
-        # Log summary if there were any failures
-        if failed_loggers:
-            _LOGGER.info(f"Successfully set {len(successfully_set)} logger(s), failed to set {len(failed_loggers)} logger(s)")
-        else:
-            _LOGGER.debug(f"Successfully set all {len(successfully_set)} logger(s)")
+        _LOGGER.debug(f"Successfully set all {len(logger_names)} logger(s)")
         
         # Persist the state to storage
         try:
@@ -155,7 +124,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 "managed_loggers": managed_data["managed_loggers"],
                 "last_updated": managed_data["last_updated"]
             })
-            _LOGGER.debug(f"Persisted logger state for {len(successfully_set)} loggers")
+            _LOGGER.debug(f"Persisted logger state for {len(logger_names)} loggers")
         except Exception as e:
             _LOGGER.error(f"Failed to persist logger state: {e}")
     
