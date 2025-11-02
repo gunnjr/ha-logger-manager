@@ -39,13 +39,47 @@ class LoggerInspectorSensor(SensorEntity):
 
     def update(self) -> None:
         """Update the sensor state."""
-        data = self.hass.data.get(DOMAIN) or {}
-        default = data.get("default") or "unknown"
-        loggers = dict(sorted((data.get("loggers") or {}).items()))
+        data = self.hass.data.get(DOMAIN)
         
-        self._attr_native_value = default
-        self._attr_extra_state_attributes = {
-            "default": default,
-            "loggers": loggers,
-            "count": len(loggers),
-        }
+        if data is None:
+            self._attr_native_value = "unavailable"
+            self._attr_extra_state_attributes = {
+                "default": "unavailable",
+                "loggers": {},
+                "count": 0,
+                "error": "Logger data not found"
+            }
+            return
+            
+        # Debug: log the type and available attributes
+        _LOGGER.debug(f"Logger data type: {type(data)}")
+        _LOGGER.debug(f"Logger data attributes: {dir(data)}")
+        
+        try:
+            # Try to access logger data - we need to figure out the correct structure
+            if hasattr(data, 'default_level'):
+                default = str(data.default_level)
+            elif hasattr(data, 'default'):
+                default = str(data.default)
+            else:
+                default = "unknown"
+                
+            if hasattr(data, 'loggers'):
+                loggers = dict(data.loggers) if data.loggers else {}
+            else:
+                loggers = {}
+                
+            self._attr_native_value = default
+            self._attr_extra_state_attributes = {
+                "default": default,
+                "loggers": loggers,
+                "count": len(loggers),
+                "data_type": str(type(data))
+            }
+        except Exception as e:
+            _LOGGER.error(f"Error accessing logger data: {e}")
+            self._attr_native_value = "error"
+            self._attr_extra_state_attributes = {
+                "error": str(e),
+                "data_type": str(type(data))
+            }
