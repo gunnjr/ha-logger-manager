@@ -20,7 +20,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     async def handle_apply_levels(call: ServiceCall) -> None:
         """Handle the apply_levels service call."""
-        data = SCHEMA(call.data)
+        # Copy the data to avoid ReadOnlyDict issues
+        data = SCHEMA(dict(call.data))
         level = data["level"]
         logger_names = data["loggers"]
         
