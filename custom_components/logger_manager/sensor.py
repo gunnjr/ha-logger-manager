@@ -55,31 +55,54 @@ class LoggerInspectorSensor(SensorEntity):
         _LOGGER.debug(f"Logger data type: {type(data)}")
         _LOGGER.debug(f"Logger data attributes: {dir(data)}")
         
-        try:
-            # Try to access logger data - we need to figure out the correct structure
-            if hasattr(data, 'default_level'):
-                default = str(data.default_level)
-            elif hasattr(data, 'default'):
-                default = str(data.default)
-            else:
-                default = "unknown"
-                
-            if hasattr(data, 'loggers'):
-                loggers = dict(data.loggers) if data.loggers else {}
-            else:
-                loggers = {}
-                
-            self._attr_native_value = default
+    def update(self) -> None:
+        """Update the sensor state."""
+        data = self.hass.data.get(DOMAIN)
+        
+        if data is None:
+            self._attr_native_value = "unavailable"
             self._attr_extra_state_attributes = {
-                "default": default,
-                "loggers": loggers,
-                "count": len(loggers),
-                "data_type": str(type(data))
+                "default": "unavailable",
+                "loggers": {},
+                "count": 0,
+                "error": "Logger data not found"
             }
+            return
+            
+        try:
+            # LoggerDomainConfig has these attributes based on HA source:
+            # - default_level: the default log level
+            # - filters: dict of logger name -> level overrides
+            
+            default_level = getattr(data, 'default_level', 'unknown')
+            filters = getattr(data, 'filters', {})
+            
+            # Convert level from logging constants to string if needed
+            if hasattr(default_level, 'name'):
+                default_str = default_level.name.lower()
+            else:
+                default_str = str(default_level).lower()
+                
+            # Convert filters to string format
+            loggers_dict = {}
+            for logger_name, level in filters.items():
+                if hasattr(level, 'name'):
+                    loggers_dict[logger_name] = level.name.lower()
+                else:
+                    loggers_dict[logger_name] = str(level).lower()
+                    
+            self._attr_native_value = default_str
+            self._attr_extra_state_attributes = {
+                "default": default_str,
+                "loggers": dict(sorted(loggers_dict.items())),
+                "count": len(loggers_dict),
+            }
+            
         except Exception as e:
             _LOGGER.error(f"Error accessing logger data: {e}")
             self._attr_native_value = "error"
             self._attr_extra_state_attributes = {
                 "error": str(e),
-                "data_type": str(type(data))
+                "data_type": str(type(data)),
+                "available_attrs": [attr for attr in dir(data) if not attr.startswith('_')]
             }
