@@ -37,20 +37,37 @@ class LoggerManagerCard extends HTMLElement {
 
   // Get available loggers from our sensor
   _getAvailableLoggers() {
-    if (!this._hass) return [];
+    if (!this._hass) {
+      console.log('Logger Manager Card: No hass object');
+      return [];
+    }
     
     const sensor = this._hass.states['sensor.logger_levels'];
-    if (!sensor || !sensor.attributes) return [];
+    if (!sensor) {
+      console.log('Logger Manager Card: No sensor.logger_levels found');
+      return [];
+    }
+    
+    if (!sensor.attributes) {
+      console.log('Logger Manager Card: Sensor has no attributes');
+      return [];
+    }
+    
+    console.log('Logger Manager Card: Sensor attributes:', sensor.attributes);
     
     // The sensor no longer stores the full list in attributes (DB size limit)
     // Instead, we'll use the sample data or implement a service call
     // For now, use the samples to demonstrate the concept
     const samples = sensor.attributes.logger_samples || {};
+    console.log('Logger Manager Card: Logger samples:', samples);
+    
     const loggers = [
       ...(samples.homeassistant_sample || []),
       ...(samples.custom_sample || []),
       ...(samples.library_sample || [])
     ];
+    
+    console.log('Logger Manager Card: Extracted loggers from samples:', loggers);
     
     // Add some common loggers that users often need
     const common_loggers = [
@@ -65,6 +82,7 @@ class LoggerManagerCard extends HTMLElement {
     
     // Combine and dedupe
     const allLoggers = [...new Set([...loggers, ...common_loggers])];
+    console.log('Logger Manager Card: Final logger list:', allLoggers);
     return allLoggers.sort();
   }
 
