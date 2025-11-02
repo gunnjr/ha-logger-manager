@@ -83,19 +83,20 @@ class LoggerInspectorSensor(SensorEntity):
             else:
                 default_str = "unknown"
                 
-            # Convert overrides to readable format
-            loggers_dict = {}
-            for logger_name, level in overrides.items():
-                if isinstance(level, int):
-                    loggers_dict[logger_name] = logging.getLevelName(level).lower()
-                else:
-                    loggers_dict[logger_name] = str(level).lower()
+            # Auto-cleanup: remove managed loggers that match default level
+            cleaned_managed = {}
+            for logger_name, level in managed_loggers.items():
+                if level.lower() != default_str:
+                    cleaned_managed[logger_name] = level
+            
+            # Update managed loggers if cleanup occurred
+            if len(cleaned_managed) != len(managed_loggers):
+                self.hass.data[LOGGER_MANAGER_DOMAIN]["managed_loggers"] = cleaned_managed
+                managed_loggers = cleaned_managed
                     
             self._attr_native_value = default_str
             self._attr_extra_state_attributes = {
                 "default": default_str,
-                "loggers": dict(sorted(loggers_dict.items())),
-                "count": len(loggers_dict),
                 "managed_loggers": dict(sorted(managed_loggers.items())),
                 "managed_count": len(managed_loggers),
                 "last_updated": last_updated,

@@ -55,4 +55,4 @@ htmlcov/
 # MyPy
 .mypy_cache/
 .dmypy.json
-dmypy.json
+dmypy.json.vscode/

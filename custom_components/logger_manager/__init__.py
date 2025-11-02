@@ -72,11 +72,33 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         level = data["level"]
         logger_names = data["loggers"]
         
+        # Smart debug logging for our own integration
+        our_integration = "custom_components.logger_manager"
+        if our_integration in logger_names:
+            # Get current managed level for our integration
+            managed_data = hass.data[DOMAIN]
+            current_level = managed_data["managed_loggers"].get(our_integration, "warning")
+            
+            # Log BEFORE if changing FROM debug (while debug still visible)
+            if current_level.lower() == "debug" and level.lower() != "debug":
+                _LOGGER.debug(f"Setting {our_integration} to {level}")
+        
         # Create mapping for HA's logger.set_level service
         mapping = {name: level for name in logger_names}
         
         # Call Home Assistant's built-in logger service
         await hass.services.async_call("logger", "set_level", mapping, blocking=True)
+        
+        # Smart debug logging continued
+        if our_integration in logger_names:
+            # Log AFTER if changing TO debug (so debug message appears)
+            if level.lower() == "debug":
+                _LOGGER.debug(f"Setting {our_integration} to {level}")
+        
+        # Log for other integrations (after change)
+        for logger_name in logger_names:
+            if logger_name != our_integration:
+                _LOGGER.debug(f"Setting {logger_name} to {level}")
         
         # Track the loggers we've managed (authoritative record)
         managed_data = hass.data[DOMAIN]
