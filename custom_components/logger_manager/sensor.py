@@ -45,6 +45,36 @@ class LoggerInspectorSensor(SensorEntity):
         if "last_updated" not in self.hass.data[LOGGER_MANAGER_DOMAIN]:
             self.hass.data[LOGGER_MANAGER_DOMAIN]["last_updated"] = None
 
+    def _discover_available_loggers(self) -> list[str]:
+        """Discover UI-relevant logger names (HA core + custom components + key libraries)."""
+        try:
+            # Get all currently known loggers
+            logger_dict = logging.Logger.manager.loggerDict
+            loggers = set()
+            
+            # Add HA core and custom components (highest priority)
+            for name in logger_dict:
+                if isinstance(name, str):
+                    if (name.startswith("homeassistant") or 
+                        name.startswith("custom_components")):
+                        loggers.add(name)
+            
+            # Add key libraries that users might debug
+            key_libraries = [
+                "asyncio", "aiohttp", "urllib3", "requests", 
+                "aiodns", "aiofiles", "websockets"
+            ]
+            for lib in key_libraries:
+                if lib in logger_dict:
+                    loggers.add(lib)
+            
+            # Sort and return
+            return sorted(list(loggers))
+            
+        except Exception as e:
+            _LOGGER.warning(f"Error discovering loggers: {e}")
+            return []
+
     def update(self) -> None:
         """Update the sensor state."""
         data = self.hass.data.get(DOMAIN)
@@ -57,6 +87,8 @@ class LoggerInspectorSensor(SensorEntity):
                 "count": 0,
                 "managed_loggers": {},
                 "managed_count": 0,
+                "available_loggers": [],
+                "available_count": 0,
                 "last_updated": None,
                 "error": "Logger data not found"
             }
@@ -93,12 +125,17 @@ class LoggerInspectorSensor(SensorEntity):
             if len(cleaned_managed) != len(managed_loggers):
                 self.hass.data[LOGGER_MANAGER_DOMAIN]["managed_loggers"] = cleaned_managed
                 managed_loggers = cleaned_managed
+            
+            # Get available loggers for the UI
+            available_loggers = self._discover_available_loggers()
                     
             self._attr_native_value = default_str
             self._attr_extra_state_attributes = {
                 "default": default_str,
                 "managed_loggers": dict(sorted(managed_loggers.items())),
                 "managed_count": len(managed_loggers),
+                "available_loggers": available_loggers,
+                "available_count": len(available_loggers),
                 "last_updated": last_updated,
             }
             
@@ -110,6 +147,8 @@ class LoggerInspectorSensor(SensorEntity):
                 "data_type": str(type(data)),
                 "managed_loggers": {},
                 "managed_count": 0,
+                "available_loggers": [],
+                "available_count": 0,
                 "last_updated": None,
                 "available_attrs": [attr for attr in dir(data) if not attr.startswith('_')]
             }
