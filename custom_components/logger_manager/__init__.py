@@ -93,6 +93,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         logger_data = hass.data.get("logger")
         actual_overrides = getattr(logger_data, 'overrides', {}) if logger_data else {}
         
+        # Debug: log what we found in actual overrides
+        _LOGGER.debug(f"Post-validation: HA logger overrides contains {len(actual_overrides)} entries: {list(actual_overrides.keys())}")
+        
         # Track only loggers that were actually set
         successfully_set = []
         failed_loggers = []
@@ -102,7 +105,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             if logger_name in actual_overrides:
                 # Convert the actual level to string for comparison
                 actual_level_int = actual_overrides[logger_name]
-                actual_level_str = logging.getLevelName(actual_level_int).lower()
+                # Use proper level name conversion - getLevelName with int returns the string name
+                if isinstance(actual_level_int, int):
+                    actual_level_str = logging.getLevelName(actual_level_int).lower()
+                else:
+                    actual_level_str = str(actual_level_int).lower()
+                _LOGGER.debug(f"Post-validation: {logger_name} found with level {actual_level_str} (requested {level})")
                 if actual_level_str == level.lower():
                     successfully_set.append(logger_name)
                 else:
@@ -110,6 +118,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                     _LOGGER.warning(f"Logger '{logger_name}' was set but to unexpected level '{actual_level_str}' instead of '{level}'")
             else:
                 failed_loggers.append(logger_name)
+                _LOGGER.debug(f"Post-validation: {logger_name} NOT found in HA overrides")
                 _LOGGER.warning(f"Failed to set logger level for '{logger_name}' - logger may not exist or setting failed")
         
         # Smart debug logging continued
