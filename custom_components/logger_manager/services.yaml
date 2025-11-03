@@ -38,6 +38,10 @@ apply_levels:
         Mixed example:
         ["homeassistant.components.http", "custom_components.logger_manager", "homeassistant.core"]
 
+refresh_logger_cache:
+  name: Refresh Logger Cache
+  description: Manually refresh the cached list of available loggers used by the WebSocket API. The cache normally refreshes automatically every 30 minutes, but this service allows immediate refresh when needed (e.g., after installing new integrations).
+
 test_logger_discovery:
   name: Test Logger Discovery
   description: "[TEMPORARY] Validates logger discovery approach by analyzing Python's logging system. Creates sensor.logger_discovery_test with results and logs detailed analysis. Use this to verify UI foundation before development."
