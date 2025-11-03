@@ -18,11 +18,101 @@
 ### Current Issue ❌
 **Dropdown UX Problem**: The logger dropdown appears when clicked but disappears too quickly for user selection. User cannot actually select a logger from the list.
 
-**Symptoms:**
-- Card displays correctly with "19 loggers available"
-- Clicking dropdown shows logger list
-- List disappears before user can click on an option
-- Likely a CSS positioning/z-index issue or event handling conflict
+**Root Cause Discovered**: `ha-generic-picker` component access issue in custom cards.
+
+**V2 Card Error**: 
+```
+Uncaught (in promise) TypeError: Cannot read properties of undefined (property 'render') at ha-generic-picker.ts:102
+```
+
+## Research Findings: ha-generic-picker Access Methods
+
+### Option 1: Direct Import Method ⚠️
+**Status**: Not straightforward for custom cards
+**Findings**:
+- `ha-generic-picker` is used extensively in HA core (entity-picker, user-picker, etc.)
+- Requires proper import: `import "../ha-generic-picker"`
+- HA core uses: `import type { HaGenericPicker } from "../ha-generic-picker"`
+- **Problem**: Import paths not accessible to external custom cards
+- **Possible Solution**: Need to research if component loads after HA initialization
+
+**Import Pattern from HA Core**:
+```typescript
+import "../ha-generic-picker";
+import type { HaGenericPicker } from "../ha-generic-picker";
+
+// Usage in render():
+<ha-generic-picker
+  .hass=${this.hass}
+  .getItems=${this._getItems}
+  .rowRenderer=${this._rowRenderer}
+  .searchFn=${this._searchFn}
+  @value-changed=${this._valueChanged}
+></ha-generic-picker>
+```
+
+### Option 2: Decluttering Card Method ✅
+**Status**: Proven solution for accessing internal HA components
+**Repository**: https://github.com/custom-cards/decluttering-card
+**How it works**:
+- HACS add-on that creates reusable card templates
+- Provides access to internal HA components not normally available to custom cards
+- Uses HA's own component loading system through templates
+
+**Implementation Approach**:
+1. Install Decluttering card from HACS
+2. Create template that uses `ha-generic-picker`
+3. Pass our logger data as template variables
+4. Template renders using real HA components
+
+**Pros**:
+- ✅ Proven to work with internal HA components
+- ✅ No import/loading issues
+- ✅ Handles component lifecycle properly
+- ✅ Active maintenance and community support
+
+**Cons**:
+- ❌ Adds external dependency
+- ❌ More complex setup process
+- ❌ Template syntax vs direct code
+
+**Template Structure Example**:
+```yaml
+# In decluttering_templates:
+logger_picker_template:
+  card:
+    type: custom:ha-generic-picker
+    hass: "[[hass]]"
+    items: "[[logger_items]]"
+    getItems: "[[get_items_fn]]"
+    # ... other properties
+
+# In our card usage:
+- type: custom:decluttering-card
+  template: logger_picker_template
+  variables:
+    - logger_items: [our logger array]
+    - get_items_fn: [our function]
+```
+
+### Option 3: Alternative Component (Fallback) 🔄
+**Status**: Backup option if others fail
+**Components to try**:
+- `ha-combo-box` - Available and works in custom cards
+- `ha-textfield` with custom dropdown - Manual implementation
+- Basic HTML select with enhanced styling
+
+## Recommendation
+
+**Primary Path**: Try Option 1 (Direct Import) first with proper component waiting
+**Fallback Path**: Option 2 (Decluttering Card) for guaranteed compatibility  
+**Emergency Path**: Option 3 (ha-combo-box) for immediate functionality
+
+**Next Testing Priority**:
+1. Research proper `ha-generic-picker` import syntax for custom cards
+2. Test component availability timing (wait for HA load)
+3. If needed, implement Decluttering card approach
+4. Document working solution for future reference
 
 ## Next Steps
 

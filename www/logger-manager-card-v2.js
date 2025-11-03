@@ -27,9 +27,9 @@ class LoggerManagerCardV2 extends HTMLElement {
       return [];
     }
     
-    const sensor = this._hass.states['sensor.logger_manager'];
+    const sensor = this._hass.states['sensor.logger_levels'];
     if (!sensor) {
-      console.log('Logger Manager Card V2: sensor.logger_manager not found');
+      console.log('Logger Manager Card V2: sensor.logger_levels not found');
       return [];
     }
     
