@@ -143,6 +143,71 @@ class HaLoggerMultiselectCard extends HTMLElement {
     this._filterLoggers();
     this._updateMatchCount();
     this._updateResultsList();
+    this._updateSelectionArea();
+  }
+
+  _onChipRemove(loggerName) {
+    // Remove from selection
+    this._selectedLoggers.delete(loggerName);
+
+    // Re-filter to add item back to results
+    this._filterLoggers();
+    this._updateMatchCount();
+    this._updateResultsList();
+    this._updateSelectionArea();
+  }
+
+  _onClearAll() {
+    // Clear all selections
+    this._selectedLoggers.clear();
+
+    // Re-filter to show all items again
+    this._filterLoggers();
+    this._updateMatchCount();
+    this._updateResultsList();
+    this._updateSelectionArea();
+  }
+
+  _updateSelectionArea() {
+    const selectionArea = this.shadowRoot?.querySelector('.selection-area');
+    if (!selectionArea) return;
+
+    const selectedArray = Array.from(this._selectedLoggers);
+    const selectionCount = selectedArray.length;
+
+    const selectionBadge = selectionArea.querySelector('.selection-badge');
+    if (selectionBadge) {
+      selectionBadge.textContent = `Selected: ${selectionCount}`;
+    }
+
+    const chipsContainer = selectionArea.querySelector('.chips-container');
+    if (chipsContainer) {
+      if (selectionCount === 0) {
+        chipsContainer.innerHTML = '<div class="no-selection">No loggers selected</div>';
+      } else {
+        chipsContainer.innerHTML = selectedArray.map(logger => `
+          <div class="chip" data-logger="${logger}">
+            <span class="chip-label">${logger}</span>
+            <button class="chip-remove" aria-label="Remove ${logger}">×</button>
+          </div>
+        `).join('');
+
+        // Add event listeners for chip removal
+        chipsContainer.querySelectorAll('.chip-remove').forEach(button => {
+          button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const chip = e.target.closest('.chip');
+            const loggerName = chip.dataset.logger;
+            this._onChipRemove(loggerName);
+          });
+        });
+      }
+    }
+
+    const clearButton = selectionArea.querySelector('.clear-all-button');
+    if (clearButton) {
+      clearButton.style.display = selectionCount > 0 ? 'block' : 'none';
+    }
   }
 
   _onResultKeydown(event, index) {
@@ -250,9 +315,57 @@ class HaLoggerMultiselectCard extends HTMLElement {
         .card-content {
           padding: 16px;
           color: var(--primary-text-color);
+          display: flex;
+          flex-direction: column;
+          gap: 0;
         }
 
         .search-section {
+          width: 100%;
+        }
+
+        .selection-row {
+          display: flex;
+          flex-direction: row;
+          gap: 16px;
+          margin-top: 24px;
+          width: 100%;
+        }
+
+        .selection-area {
+          flex: 2 1 0%;
+          border: 1px solid var(--divider-color);
+          border-radius: var(--control-border-radius, 8px);
+          background: var(--card-background-color, white);
+          padding: 16px;
+          min-width: 0;
+          height: fit-content;
+        }
+
+        .controls-area {
+          flex: 1 0 120px;
+          min-width: 120px;
+          max-width: 180px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: flex-start;
+          border: 1px dashed var(--divider-color);
+          border-radius: var(--control-border-radius, 8px);
+          background: var(--card-background-color, white);
+          padding: 16px;
+          margin-left: 0;
+          height: fit-content;
+        }
+
+        .controls-placeholder {
+          color: var(--secondary-text-color);
+          font-size: 13px;
+          font-style: italic;
+          opacity: 0.7;
+        }
+
+        .search-subsection {
           margin-bottom: 16px;
         }
 
@@ -289,7 +402,7 @@ class HaLoggerMultiselectCard extends HTMLElement {
         }
 
         .results-list {
-          max-height: 300px;
+          max-height: 196px; /* 4 rows x 49px (row+border) */
           overflow-y: auto;
           border: 1px solid var(--divider-color);
           border-radius: var(--control-border-radius, 8px);
@@ -334,6 +447,98 @@ class HaLoggerMultiselectCard extends HTMLElement {
           background: var(--secondary-background-color, #f5f5f5);
         }
 
+        /* Selection Area Styles */
+        .selection-area {
+          border: 1px solid var(--divider-color);
+          border-radius: var(--control-border-radius, 8px);
+          background: var(--card-background-color, white);
+          padding: 16px;
+          height: fit-content;
+        }
+
+        .selection-badge {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--primary-text-color);
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--divider-color);
+        }
+
+        .chips-container {
+          min-height: 49px;
+          max-height: 147px; /* 3 rows x 49px (chip+margin) */
+          overflow-y: auto;
+          margin-bottom: 12px;
+        }
+
+        .no-selection {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100px;
+          color: var(--secondary-text-color);
+          font-size: 12px;
+          font-style: italic;
+        }
+
+        .chip {
+          display: flex;
+          align-items: center;
+          background: var(--primary-color)22;
+          border: 1px solid var(--primary-color)44;
+          border-radius: var(--ha-chip-border-radius, 16px);
+          padding: 4px 8px 4px 8px;
+          margin: 2px;
+          font-size: 12px;
+          max-width: 100%;
+        }
+        .chip-remove {
+          background: none;
+          border: none;
+          color: var(--primary-color);
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: bold;
+          padding: 0 6px 0 0;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s ease;
+          margin-right: 4px;
+        }
+        .chip-remove:hover {
+          background: var(--primary-color)33;
+        }
+        .chip-label {
+          color: var(--primary-text-color);
+          font-family: var(--code-font-family, monospace);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+          text-align: right;
+        }
+
+        .clear-all-button {
+          width: 100%;
+          padding: 8px 12px;
+          background: var(--secondary-background-color, #f5f5f5);
+          border: 1px solid var(--divider-color);
+          border-radius: var(--control-border-radius, 8px);
+          color: var(--secondary-text-color);
+          cursor: pointer;
+          font-size: 12px;
+          transition: background-color 0.2s ease;
+        }
+
+        .clear-all-button:hover {
+          background: var(--divider-color);
+        }
+
         .status-section {
           min-height: 100px;
           display: flex;
@@ -368,13 +573,22 @@ class HaLoggerMultiselectCard extends HTMLElement {
           .card-header {
             padding: 12px;
           }
-          
           .card-content {
             padding: 12px;
           }
-          
           .card-title {
             font-size: 18px;
+          }
+          .selection-row {
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+          }
+          .controls-area {
+            max-width: 100%;
+            width: 100%;
+            margin-left: 0;
+            align-items: stretch;
           }
         }
 
@@ -386,34 +600,51 @@ class HaLoggerMultiselectCard extends HTMLElement {
 
       <div class="card-header">
         <h2 class="card-title">Logger Picker</h2>
-        <div class="version-info">v3.3-longer-list</div>
+        <div class="version-info">v4.1-layout-polish</div>
       </div>
       
       <div class="card-content">
-        ${showSearch ? `
-          <div class="search-section">
-            <input 
-              type="text" 
-              class="search-input" 
-              placeholder="Search loggers..." 
-              value="${this._searchQuery}"
-            />
-            <div class="match-count">
-              <span>${matchCount} matches</span>
+        <div class="search-section">
+          ${showSearch ? `
+            <div class="search-subsection">
+              <input 
+                type="text" 
+                class="search-input" 
+                placeholder="Search loggers..." 
+                value="${this._searchQuery}"
+              />
+              <div class="match-count">
+                <span>${matchCount} matches</span>
+              </div>
             </div>
-          </div>
+            
+            ${matchCount > 0 ? `
+              <div class="results-section">
+                <div class="results-list"></div>
+              </div>
+            ` : ''}
+          ` : ''}
           
-          ${matchCount > 0 ? `
-            <div class="results-section">
-              <div class="results-list"></div>
+          ${!showSearch ? `
+            <div class="status-section">
+              <div class="status-text ${statusClass}">
+                ${statusContent}
+              </div>
             </div>
           ` : ''}
-        ` : ''}
-        
-        ${!showSearch ? `
-          <div class="status-section">
-            <div class="status-text ${statusClass}">
-              ${statusContent}
+        </div>
+
+        ${showSearch ? `
+          <div class="selection-row">
+            <div class="selection-area">
+              <div class="selection-badge">Selected: 0</div>
+              <div class="chips-container">
+                <div class="no-selection">No loggers selected</div>
+              </div>
+              <button class="clear-all-button" style="display: none;">Clear All</button>
+            </div>
+            <div class="controls-area">
+              <div class="controls-placeholder">[Batch controls placeholder]</div>
             </div>
           </div>
         ` : ''}
@@ -435,10 +666,16 @@ class HaLoggerMultiselectCard extends HTMLElement {
         });
       }
 
-      // Initialize results list if we have matches
+      const clearAllButton = this.shadowRoot.querySelector('.clear-all-button');
+      if (clearAllButton) {
+        clearAllButton.addEventListener('click', () => this._onClearAll());
+      }
+
+      // Initialize results list and selection area if we have matches
       if (matchCount > 0) {
         this._updateResultsList();
       }
+      this._updateSelectionArea();
     }
   }
 }
