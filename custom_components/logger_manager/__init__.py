@@ -37,6 +37,11 @@ async def _discover_available_loggers(hass: HomeAssistant) -> list[str]:
     Extracts the core discovery logic from the test service for reuse.
     Returns a sorted list of relevant logger names.
     """
+    # JG comment to copilot: I just realized that we are explicit in the loggers that we want to include.
+    # I'm concerned that this may miss some loggers that users want to debug.
+    # Specifically, loggers related to integrations that are not under "homeassistant" or "custom_components".
+    # Do such loggers comply with a naming convention we can use to include them? (perhaps they're already picked up by
+    # our inclusion of loggers with "homeassistant" in the name?)
     try:
         logger_dict = logging.Logger.manager.loggerDict
         

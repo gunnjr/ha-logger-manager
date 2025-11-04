@@ -51,6 +51,7 @@ Thumbs.db
 .coverage
 .pytest_cache/
 htmlcov/
+deploy-card.sh
 
 # MyPy
 .mypy_cache/
