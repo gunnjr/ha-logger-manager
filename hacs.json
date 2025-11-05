@@ -2,8 +2,5 @@
   "name": "Logger Manager",
   "render_readme": true,
   "country": "US",
-  "domains": ["sensor"],
-  "homeassistant": "2024.6.0",
-  "iot_class": "Local Polling",
-  "categories": ["integration", "plugin"]
+  "homeassistant": "2024.6.0"
 }
