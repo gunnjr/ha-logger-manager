@@ -57,3 +57,9 @@ deploy-card.sh
 .mypy_cache/
 .dmypy.json
 dmypy.json.vscode/
+
+# HACS and frontend
+www/community/
+www/community/logger_manager/
+www/logger_manager/
+www/logger_manager/ha-logger-multiselect-card.js
