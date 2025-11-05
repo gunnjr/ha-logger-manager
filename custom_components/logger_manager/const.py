@@ -1,0 +1,1 @@
+DOMAIN = "logger_manager"

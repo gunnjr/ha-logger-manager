@@ -9,6 +9,8 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.storage import Store
+
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
 
 _LOGGER = logging.getLogger(__name__)
@@ -247,6 +249,7 @@ async def async_test_logger_discovery(call: ServiceCall) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+
     """Set up the Logger Manager integration."""
     
     # Initialize storage
@@ -365,4 +368,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Register WebSocket command
     websocket_api.async_register_command(hass, websocket_get_loggers)
     
+    return True
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Logger Manager from a config entry."""
+    # Reuse the existing async_setup logic for now
+    return await async_setup(hass, {})
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a Logger Manager config entry."""
+    # No special cleanup needed for now
     return True

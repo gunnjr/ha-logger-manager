@@ -1,11 +1,11 @@
 {
   "domain": "logger_manager",
   "name": "Logger Manager",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "documentation": "https://github.com/gunnjr/ha-logger-manager",
   "issue_tracker": "https://github.com/gunnjr/ha-logger-manager/issues",
   "requirements": [],
   "codeowners": ["@gunnjr"],
   "iot_class": "local_polling",
-  "config_flow": false
+  "config_flow": true
 }

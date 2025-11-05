@@ -5,5 +5,5 @@
   "domains": ["sensor"],
   "homeassistant": "2024.6.0",
   "iot_class": "Local Polling",
-  "categories": ["integration"]
+  "categories": ["integration", "plugin"]
 }
