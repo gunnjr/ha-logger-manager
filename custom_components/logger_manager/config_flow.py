@@ -9,17 +9,20 @@ class LoggerManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Logger Manager."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     async def async_step_user(self, user_input=None):
-        errors = {}
+        """Handle a flow initialized by the user."""
+        # Only allow a single config entry
+        if self._async_current_entries():
+            return self.async_abort(reason="already_configured")
+
         if user_input is not None:
             # No options needed, just create the entry
             return self.async_create_entry(title="Logger Manager", data={})
+
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({}),
-            errors=errors,
         )
 
     @staticmethod
