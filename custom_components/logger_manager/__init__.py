@@ -336,7 +336,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # Track all loggers we requested (matches HA's behavior)
         managed_data = hass.data[DOMAIN]
         for logger_name in logger_names:
-            managed_data["managed_loggers"][logger_name] = level
+            # Remove from managed if set to system default or notset
+            system_default = managed_data.get("system_default_level", "warning")
+            if level.lower() == system_default or level.lower() == "notset":
+                managed_data["managed_loggers"].pop(logger_name, None)
+            else:
+                managed_data["managed_loggers"][logger_name] = level
         managed_data["last_updated"] = datetime.now().isoformat()
         
         _LOGGER.debug(f"Successfully set all {len(logger_names)} logger(s)")

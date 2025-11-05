@@ -16,6 +16,8 @@ class HaLoggerMultiselectCard extends HTMLElement {
     this._selectedLoggers = new Set();
     this._debounceTimer = null;
     this._focusedIndex = -1;
+    this._selectedLevel = 'DEBUG';
+    this._logLevels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL', 'NOTSET'];
   }
 
   set hass(hass) {
@@ -168,6 +170,31 @@ class HaLoggerMultiselectCard extends HTMLElement {
     this._updateSelectionArea();
   }
 
+  _onLevelChange(event) {
+    this._selectedLevel = event.target.value;
+    // Re-render to update button label
+    this.render();
+  }
+
+  async _onSetLevel() {
+    if (!this._hass || this._selectedLoggers.size === 0) return;
+    const loggers = Array.from(this._selectedLoggers);
+    // Pass level as lower case to the service
+    const level = this._selectedLevel.toLowerCase();
+    try {
+      await this._hass.callService('logger_manager', 'apply_levels', {
+        loggers,
+        level
+      });
+    } catch (e) {
+      // Optionally show error to user
+      // For now, just log
+      console.error('Failed to set logger levels', e);
+    }
+    // Clear selection after service call
+    this._onClearAll();
+  }
+
   _updateSelectionArea() {
     const selectionArea = this.shadowRoot?.querySelector('.selection-area');
     if (!selectionArea) return;
@@ -208,8 +235,23 @@ class HaLoggerMultiselectCard extends HTMLElement {
     if (clearButton) {
       clearButton.style.display = selectionCount > 0 ? 'block' : 'none';
     }
+
+    const controlsArea = this.shadowRoot?.querySelector('.controls-area');
+    if (controlsArea) {
+      const dropdown = controlsArea.querySelector('.level-dropdown');
+      const setBtn = controlsArea.querySelector('.set-level-btn');
+      const selectionCount = this._selectedLoggers.size;
+      if (dropdown) {
+        dropdown.disabled = selectionCount === 0;
+        dropdown.value = this._selectedLevel || 'debug';
+      }
+      if (setBtn) {
+        setBtn.disabled = selectionCount === 0;
+      }
+    }
   }
 
+  // Restore keyboard navigation for results list
   _onResultKeydown(event, index) {
     switch (event.key) {
       case 'ArrowDown':
@@ -358,11 +400,29 @@ class HaLoggerMultiselectCard extends HTMLElement {
           height: fit-content;
         }
 
-        .controls-placeholder {
-          color: var(--secondary-text-color);
+        .controls-area label {
           font-size: 13px;
-          font-style: italic;
-          opacity: 0.7;
+          margin-bottom: 8px;
+          width: 100%;
+        }
+
+        .controls-area select.level-dropdown,
+        .controls-area button.set-level-btn {
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .controls-area button.set-level-btn {
+          margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+          .controls-area select.level-dropdown,
+          .controls-area button.set-level-btn {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+          }
         }
 
         .search-subsection {
@@ -597,12 +657,9 @@ class HaLoggerMultiselectCard extends HTMLElement {
           opacity: 0.7;
         }
       </style>
-
       <div class="card-header">
-        <h2 class="card-title">Logger Picker</h2>
-        <div class="version-info">v4.1-layout-polish</div>
+        <h2 class="card-title">Set Logger Levels</h2>
       </div>
-      
       <div class="card-content">
         <div class="search-section">
           ${showSearch ? `
@@ -617,14 +674,12 @@ class HaLoggerMultiselectCard extends HTMLElement {
                 <span>${matchCount} matches</span>
               </div>
             </div>
-            
             ${matchCount > 0 ? `
               <div class="results-section">
                 <div class="results-list"></div>
               </div>
             ` : ''}
           ` : ''}
-          
           ${!showSearch ? `
             <div class="status-section">
               <div class="status-text ${statusClass}">
@@ -633,7 +688,6 @@ class HaLoggerMultiselectCard extends HTMLElement {
             </div>
           ` : ''}
         </div>
-
         ${showSearch ? `
           <div class="selection-row">
             <div class="selection-area">
@@ -644,7 +698,13 @@ class HaLoggerMultiselectCard extends HTMLElement {
               <button class="clear-all-button" style="display: none;">Clear All</button>
             </div>
             <div class="controls-area">
-              <div class="controls-placeholder">[Batch controls placeholder]</div>
+              <label for="level-dropdown">Target Logger Level:</label>
+              <select id="level-dropdown" class="level-dropdown">
+                ${this._logLevels.map(lvl => `<option value="${lvl}"${(this._selectedLevel === lvl ? ' selected' : '')}>${lvl}</option>`).join('')}
+              </select>
+              <button class="set-level-btn">
+                Set level to ${this._selectedLevel ? this._selectedLevel : 'DEBUG'}
+              </button>
             </div>
           </div>
         ` : ''}
@@ -669,6 +729,18 @@ class HaLoggerMultiselectCard extends HTMLElement {
       const clearAllButton = this.shadowRoot.querySelector('.clear-all-button');
       if (clearAllButton) {
         clearAllButton.addEventListener('click', () => this._onClearAll());
+      }
+
+      const controlsArea = this.shadowRoot.querySelector('.controls-area');
+      if (controlsArea) {
+        const dropdown = controlsArea.querySelector('.level-dropdown');
+        const setBtn = controlsArea.querySelector('.set-level-btn');
+        if (dropdown) {
+          dropdown.addEventListener('change', (e) => this._onLevelChange(e));
+        }
+        if (setBtn) {
+          setBtn.addEventListener('click', () => this._onSetLevel());
+        }
       }
 
       // Initialize results list and selection area if we have matches
