@@ -259,7 +259,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "managed_loggers": {},
             "last_updated": None,
             "services_registered": False,
+            "frontend_registered": False,
         }
+
+    # Register frontend card resource once
+    if not hass.data[DOMAIN].get("frontend_registered", False):
+        try:
+            # Register the frontend card as a Lovelace resource
+            await hass.http.async_register_static_paths([
+                {
+                    "url": f"/hacsfiles/{DOMAIN}/ha-logger-multiselect-card.js",
+                    "path": hass.config.path(f"custom_components/{DOMAIN}/frontend/ha-logger-multiselect-card.js"),
+                }
+            ])
+            hass.data[DOMAIN]["frontend_registered"] = True
+            _LOGGER.debug("Frontend card resource registered")
+        except Exception as e:
+            _LOGGER.warning(f"Could not register frontend resource automatically: {e}. Users can add it manually via Dashboard Resources.")
 
     # Initialize storage
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
