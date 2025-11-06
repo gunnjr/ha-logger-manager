@@ -14,25 +14,37 @@ A Home Assistant integration for managing logging levels
 
 ---
 
+> **Note**: This is my first published Home Assistant integration. While it works and is useful, it may need improvements and hardening as more people use it. Feedback, issues, and contributions are welcome!
+
+---
+
 ## What It Does
 
-Logger Manager helps you change and monitor Home Assistant logging levels. It provides a sensor to track which loggers you've customized, services to change log levels, and an optional UI card for visual management.
+**The main value of Logger Manager is its UI card** that makes changing logger levels easier than using Developer Tools. It also provides a sensor that tracks which loggers you've customized and services that remember your changes across restarts.
 
-## Why Use This?
+When debugging Home Assistant, you often need to enable debug logging for specific integrations. The native way requires typing logger names into Developer Tools. Logger Manager's UI card gives you a searchable dropdown of available loggers and buttons to change levels - much faster and less error-prone.
 
-When debugging Home Assistant, you often need to enable debug logging for specific integrations. Logger Manager:
-- Remembers which loggers you've customized
-- Lets you change multiple logger levels at once
-- Provides a sensor showing your current logging configuration
-- Includes a UI card for easier management (optional)
+## Key Feature: The UI Card
 
-It's a helper tool for developers and power users who frequently work with HA logging.
+![Logger Manager Card Overview](screenshots/logger-card-overview.png)
 
-## Features
+The Logger Manager card provides:
+- **Searchable multi-select dropdown** of all available loggers
+- **One-click level changes** (Critical, Error, Warning, Info, Debug)
+- **Visual feedback** on current logger states
+- **Bulk operations** - change multiple loggers at once
+
+This is the primary reason to use Logger Manager. The backend services and sensor exist to support the UI, but the UI is where the real value lies.
+
+![Logger Dropdown Search](screenshots/logger-dropdown-search.png)
+
+## Secondary Features
 
 ### Logger State Sensor
 
-A sensor (`sensor.logger_levels`) showing:
+![Logger Sensor State](screenshots/logger-sensor-state.png)
+
+A sensor (`sensor.logger_levels`) that tracks:
 - Current default log level
 - List of loggers you've customized and their levels
 - Count of customized loggers
@@ -42,7 +54,7 @@ A sensor (`sensor.logger_levels`) showing:
 
 #### `logger_manager.apply_levels`
 
-Change log levels for one or more loggers. Similar to HA's built-in `logger.set_level` but tracks what you've changed.
+Change log levels for one or more loggers. Similar to HA's built-in `logger.set_level` but maintains a list of managed loggers for the UI.
 
 ```yaml
 service: logger_manager.apply_levels
@@ -56,13 +68,6 @@ data:
 #### `logger_manager.refresh_logger_cache`
 
 Manually refresh the list of available loggers (normally refreshes every 30 minutes automatically).
-
-### UI Card (Optional)
-
-A Lovelace card that lets you:
-- Select multiple loggers from a searchable dropdown
-- Change their log levels with buttons
-- See which loggers are currently customized
 
 ## Installation
 
@@ -93,7 +98,7 @@ You'll see:
 - `sensor.logger_levels` entity created
 - Services registered under `logger_manager`
 
-### Adding the UI Card (Optional)
+### Adding the UI Card
 
 The UI card should be automatically available after installation. To add it to your dashboard:
 
@@ -101,7 +106,7 @@ The UI card should be automatically available after installation. To add it to y
 2. Add Card → Search for "Logger Manager Card"
 3. Add the card
 
-If the card doesn't appear, you may need to hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R).
+If the card doesn't appear, hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R).
 
 Alternatively, add via YAML:
 ```yaml
@@ -111,11 +116,11 @@ entity: sensor.logger_levels
 
 ## Usage
 
-### Via UI Card
+### Via UI Card (Recommended)
 
 1. Open the card on your dashboard
-2. Use the dropdown to select loggers (supports search and multi-select)
-3. Click a log level button (Critical, Error, Warning, Info, Debug)
+2. Use the dropdown to select loggers (search and multi-select supported)
+3. Click a log level button
 4. Click Apply
 
 ### Via Service
@@ -150,12 +155,37 @@ homeassistant.loader
 homeassistant.setup
 ```
 
+## Planned Enhancements
+
+Future versions will add:
+
+### v1.1: Configurable Logger Discovery
+- Make logger discovery patterns configurable
+- Currently hardcoded to find HA core, custom components, and system loggers
+- Will allow users to add custom patterns for third-party libraries
+
+### v1.2: Logger Management UI
+- View all managed loggers in a dedicated interface
+- Edit or remove managed logger levels
+- See history of changes
+
+### v1.3: Default Log Level Control
+- UI to change Home Assistant's default log level
+- Currently can only be changed via configuration.yaml
+
+### v2.0: Integrated Dashboard
+- Pre-built dashboard combining all Logger Manager features
+- One-stop shop for all logging needs
+
+No timeline promised - these will come as time permits and based on user feedback.
+
 ## Limitations
 
 - Loggers must exist for level changes to take effect
 - Some third-party libraries may not follow HA logging conventions
 - The sensor updates every 10 seconds, not instantly
 - WebSocket API for logger discovery caches results for 30 minutes
+- Logger discovery patterns are currently hardcoded (v1.1 will make this configurable)
 
 ## Requirements
 
@@ -170,8 +200,8 @@ homeassistant.setup
 
 **Logger Not in Dropdown:**
 - Use `logger_manager.refresh_logger_cache` service
-- Verify the integration is loaded in HA
-- Try typing the logger name manually in the card
+- Verify the integration/logger is actually loaded in HA
+- Some third-party libraries may not appear if they don't follow standard naming
 
 **Levels Not Persisting:**
 - Logger Manager stores state in `.storage/logger_manager`
@@ -179,10 +209,11 @@ homeassistant.setup
 
 ## Contributing
 
-Contributions welcome! This is a small project maintained as-needed. Feel free to:
+This is a learning project and my first HA integration. Contributions, suggestions, and constructive feedback are very welcome:
 - Report issues
 - Suggest improvements
 - Submit pull requests
+- Share usage patterns
 
 ## License
 
