@@ -264,10 +264,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register frontend card resource once
     if not hass.data[DOMAIN].get("frontend_registered", False):
+        _LOGGER.debug("Starting frontend registration from async_setup_entry")
         from .frontend import JSModuleRegistration
         module_register = JSModuleRegistration(hass)
         await module_register.async_register()
         hass.data[DOMAIN]["frontend_registered"] = True
+        _LOGGER.debug("Frontend registration completed from async_setup_entry")
+    else:
+        _LOGGER.debug("Frontend already registered, skipping registration")
 
     # Initialize storage
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
@@ -410,10 +414,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Unregister frontend resources
     if hass.data[DOMAIN].get("frontend_registered", False):
+        _LOGGER.debug("Starting frontend unregistration from async_unload_entry")
         from .frontend import JSModuleRegistration
         module_register = JSModuleRegistration(hass)
         await module_register.async_unregister()
         hass.data[DOMAIN]["frontend_registered"] = False
-        _LOGGER.debug("Unregistered frontend resources")
+        _LOGGER.debug("Frontend unregistration completed from async_unload_entry")
 
     return unload_ok

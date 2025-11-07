@@ -18,11 +18,46 @@ A Home Assistant integration for managing logging levels
 
 ---
 
-## What It Does
+## Overview
 
-**The main value of Logger Manager is its UI card** that makes changing logger levels easier than using Developer Tools. It also provides a sensor that tracks which loggers you've customized and services that remember your changes across restarts.
+Logger Manager solves a common frustration for Home Assistant developers and power users: **managing logging levels is tedious and error-prone**.
 
-When debugging Home Assistant, you often need to enable debug logging for specific integrations. The native way requires typing logger names into Developer Tools. Logger Manager's UI card gives you a searchable dropdown of available loggers and buttons to change levels - much faster and less error-prone.
+### The Problem
+
+When troubleshooting Home Assistant issues, you need to enable debug logging for specific integrations. The native approach requires:
+- Opening Developer Tools → Services
+- Manually typing logger names (e.g., `homeassistant.components.zha`)
+- Calling `logger.set_level` with exact syntax
+- Remembering which loggers you've modified
+- Repeating this process after every HA restart (changes don't persist)
+
+This workflow is slow, requires memorizing logger naming conventions, and offers no visibility into your current logging configuration.
+
+### The Solution
+
+Logger Manager provides three integrated components that work together to make logging management effortless:
+
+**1. Interactive UI Card** (the primary interface)
+- Searchable multi-select dropdown of all available loggers
+- One-click level changes with visual feedback
+- Bulk operations - modify multiple loggers at once
+- No typing required, no syntax to remember
+
+**2. Persistent State Sensor** (`sensor.logger_levels`)
+- Tracks which loggers you've customized and their current levels
+- Shows default log level and count of managed loggers
+- Updates every 10 seconds for real-time visibility
+- Powers the UI card and enables automations
+
+**3. Management Services**
+- `logger_manager.apply_levels` - Programmatically change logger levels
+- `logger_manager.refresh_logger_cache` - Force refresh available loggers
+- Services maintain managed logger state across HA restarts
+- Enable automation-based logging control
+
+### Why the UI Card Matters Most
+
+While the sensor and services are useful standalone (especially for automations), **the UI card is the primary reason to use Logger Manager**. It transforms a multi-step, error-prone workflow into a simple point-and-click operation. The backend components exist primarily to support this seamless UI experience.
 
 ## Key Feature: The UI Card
 
@@ -71,48 +106,90 @@ Manually refresh the list of available loggers (normally refreshes every 30 minu
 
 ## Installation
 
-### Via HACS
+### Via HACS (Recommended)
 
+#### Option 1: HACS Default Repository (Coming Soon)
+Once Logger Manager is accepted into HACS defaults:
 1. Open HACS → Integrations
-2. Add custom repository: `https://github.com/gunnjr/ha-logger-manager`
-3. Download "Logger Manager"
+2. Click "+ Explore & Download Repositories"
+3. Search for "Logger Manager"
+4. Click "Download"
+5. Restart Home Assistant
+6. Continue to [Setup](#setup) below
+
+#### Option 2: HACS Custom Repository (Current Method)
+Until Logger Manager is in HACS defaults:
+1. Open HACS → Integrations
+2. Click the three dots (⋮) in the top-right corner
+3. Select "Custom repositories"
+4. Add repository URL: `https://github.com/gunnjr/ha-logger-manager`
+5. Category: `Integration`
+6. Click "Add"
+7. Find "Logger Manager" in the list and click "Download"
+8. Restart Home Assistant
+9. Continue to [Setup](#setup) below
+
+### Manual Installation
+
+If you prefer not to use HACS:
+
+1. Download the latest release from [GitHub Releases](https://github.com/gunnjr/ha-logger-manager/releases)
+2. Extract the archive
+3. Copy the `custom_components/logger_manager` directory to your Home Assistant `config/custom_components/` directory
+   - Full path should be: `config/custom_components/logger_manager/`
+   - Should contain: `__init__.py`, `manifest.json`, `sensor.py`, `config_flow.py`, etc.
 4. Restart Home Assistant
-5. Add integration: Settings → Devices & Services → Add Integration → Logger Manager
-
-### Manual
-
-1. Copy `custom_components/logger_manager` to your HA `config/custom_components/` directory
-2. Restart Home Assistant
-3. Add integration: Settings → Devices & Services → Add Integration → Logger Manager
+5. Continue to [Setup](#setup) below
 
 ## Setup
 
-### Adding the Integration
+### Step 1: Add the Integration
 
-1. Go to Settings → Devices & Services
-2. Click Add Integration
-3. Search for "Logger Manager"
-4. Click Submit (no configuration needed)
+After installation and restart:
 
-You'll see:
-- `sensor.logger_levels` entity created
-- Services registered under `logger_manager`
+1. Go to **Settings** → **Devices & Services**
+2. Click **"+ Add Integration"** (bottom-right)
+3. Search for **"Logger Manager"**
+4. Click on it to add
+5. Click **"Submit"** (no configuration needed)
 
-### Adding the UI Card
+The integration will automatically:
+- Create `sensor.logger_levels` entity
+- Register `logger_manager.apply_levels` and `logger_manager.refresh_logger_cache` services
+- Register the frontend card resource (storage mode only)
 
-The UI card should be automatically available after installation. To add it to your dashboard:
+### Step 2: Add the UI Card to Your Dashboard
 
-1. Edit your dashboard
-2. Add Card → Search for "Logger Manager Card"
-3. Add the card
+The card resource is automatically registered when you add the integration (for storage mode dashboards). To use it:
 
-If the card doesn't appear, hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R).
+1. Navigate to any dashboard
+2. Click **Edit Dashboard** (top-right)
+3. Click **"+ Add Card"**
+4. Search for **"Logger Manager Card"** or scroll to find it
+5. Click to add it to your dashboard
+6. Click **"Done"** to save
 
-Alternatively, add via YAML:
+**If the card doesn't appear in the card picker:**
+- Hard refresh your browser: `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+- Check Settings → Dashboards → Resources to verify the card is listed
+- For YAML mode dashboards, see [YAML Configuration](#yaml-configuration) below
+
+#### YAML Configuration
+
+If you prefer YAML or use YAML mode dashboards:
+
 ```yaml
 type: custom:ha-logger-multiselect-card
 entity: sensor.logger_levels
 ```
+
+**Note for YAML Mode Users:** If your dashboards are in YAML mode (not storage mode), you'll need to manually add the card resource:
+
+1. Go to Settings → Dashboards → Resources tab
+2. Click "+ Add Resource"
+3. URL: `/hacsfiles/logger_manager/ha-logger-multiselect-card.js`
+4. Resource type: `JavaScript Module`
+5. Click "Create"
 
 ## Usage
 
@@ -193,19 +270,30 @@ No timeline promised - these will come as time permits and based on user feedbac
 
 ## Troubleshooting
 
-**UI Card Not Showing:**
-- Hard refresh browser (Ctrl+F5 or Cmd+Shift+R)
-- Check browser console for errors
-- Verify integration is installed and loaded
+**UI Card Not Appearing in Card Picker:**
+- Hard refresh your browser: `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+- Check Settings → Dashboards → Resources - you should see `/hacsfiles/logger_manager/ha-logger-multiselect-card.js`
+- If using YAML mode dashboards, you must manually add the resource (see [YAML Configuration](#yaml-configuration))
+- Check browser console (F12) for JavaScript errors
+- Verify the integration is installed and loaded in Settings → Devices & Services
+
+**Card Resource Not Auto-Registered:**
+- Automatic registration only works in storage mode (default for most users)
+- Check your Lovelace mode: if dashboards are defined in `configuration.yaml`, you're using YAML mode
+- For YAML mode, manually add the resource as described in [YAML Configuration](#yaml-configuration)
+- Check Home Assistant logs for any frontend registration errors
 
 **Logger Not in Dropdown:**
-- Use `logger_manager.refresh_logger_cache` service
-- Verify the integration/logger is actually loaded in HA
-- Some third-party libraries may not appear if they don't follow standard naming
+- Use the `logger_manager.refresh_logger_cache` service to force a refresh
+- Verify the integration/component is actually loaded in Home Assistant
+- Some third-party libraries may not appear if they don't follow standard naming conventions
+- The cache refreshes automatically every 30 minutes
 
-**Levels Not Persisting:**
-- Logger Manager stores state in `.storage/logger_manager`
+**Log Levels Not Persisting After Restart:**
+- Logger Manager stores managed loggers in `.storage/logger_manager`
 - Check file permissions if levels disappear after restart
+- Verify the integration is properly loaded on startup
+- Check Home Assistant logs for any storage-related errors
 
 ## Contributing
 

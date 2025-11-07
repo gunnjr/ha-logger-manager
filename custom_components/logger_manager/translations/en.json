@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Logger Manager",
-        "description": "Logger Manager helps you manage Home Assistant logging levels.\n\nAfter setup:\n• Check sensor.logger_levels for current state\n• Use logger_manager.apply_levels service to change log levels\n• Add the Logger Manager card to your dashboard for a visual interface\n\nNo configuration needed - click Submit to continue."
+        "description": "Logger Manager helps you manage Home Assistant logging levels.\n\nAfter setup:\n• Check sensor.logger_levels for current state\n• Use logger_manager.apply_levels service to change log levels\n• The Logger Manager card will be automatically added to Dashboard Resources (storage mode only)\n• Add the card to your dashboard for a visual interface\n\nNo configuration needed - click Submit to continue."
       }
     },
     "abort": {
@@ -14,7 +14,7 @@
     "step": {
       "init": {
         "title": "Logger Manager Options",
-        "description": "Logger Manager currently has no configurable options. All functionality is available through:\n\n• sensor.logger_levels entity\n• logger_manager services\n• Dashboard card (add via UI)\n\nCheck the documentation for usage examples."
+        "description": "Logger Manager currently has no configurable options. All functionality is available through:\n\n• sensor.logger_levels entity\n• logger_manager services\n• Dashboard card (automatically added to resources, add card to dashboard via UI)\n\nCheck the documentation for usage examples."
       }
     }
   }

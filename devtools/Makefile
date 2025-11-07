@@ -8,37 +8,41 @@ HA_HTTP_PORT=8123
 # Path to project root (Makefile is in devtools/)
 ROOT_DIR=..
 
-# Main UI deployment (legacy/manual install)
-UI_SRC=$(ROOT_DIR)/custom_components/logger_manager/frontend/ha-logger-multiselect-card.js
-UI_TMP=ha-logger-multiselect-card.js
-UI_DST=/config/www/logger_manager/ha-logger-multiselect-card.js
+# Backend Python files (root level)
+BACKEND_FILES = \
+	__init__.py \
+	sensor.py \
+	config_flow.py \
+	const.py \
+	manifest.json \
+	strings.json \
+	services.yaml
 
-# HACS-style UI deployment
-HACS_UI_DST=/config/www/community/logger_manager/ha-logger-multiselect-card.js
+# Frontend files
+FRONTEND_FILES = \
+	__init__.py \
+	ha-logger-multiselect-card.js
 
-BACKEND_SRC=$(ROOT_DIR)/custom_components/logger_manager/__init__.py \
-            $(ROOT_DIR)/custom_components/logger_manager/sensor.py \
-            $(ROOT_DIR)/custom_components/logger_manager/config_flow.py \
-            $(ROOT_DIR)/custom_components/logger_manager/const.py \
-            $(ROOT_DIR)/custom_components/logger_manager/manifest.json \
-            $(ROOT_DIR)/custom_components/logger_manager/strings.json \
-            $(ROOT_DIR)/custom_components/logger_manager/services.yaml \
-            $(ROOT_DIR)/custom_components/logger_manager/frontend/__init__.py
+# Translation files
+TRANSLATION_FILES = \
+	en.json
+
+# Icon files
+ICON_FILES = \
+	icon.png \
+	icon@2x.png
+
+# Deployment destination
 BACKEND_DST=/config/custom_components/logger_manager/
 
-.PHONY: ui ui-hacs backend all all-legacy all-ha-install-ready clean status help
+.PHONY: all clean status help
 
 # Show help by default
 help:
 	@echo "Logger Manager Deployment Targets:"
 	@echo "  make all             - Deploy complete integration (default)"
-	@echo "  make all-ha-install-ready - Deploy complete integration (explicit)"
-	@echo "  make all-legacy      - Deploy UI and backend to legacy paths"
-	@echo "  make backend         - Deploy backend Python files to HA"
-	@echo "  make ui              - Deploy UI card (legacy path)"
-	@echo "  make ui-hacs         - Deploy UI card (HACS path)"
 	@echo "  make clean           - Remove integration from all install paths"
-	@echo "  make status          - Show what would be deployed"
+	@echo "  make status          - Show what files will be deployed"
 	@echo ""
 	@echo "After deployment, restart HA via:"
 	@echo "  Settings → System → Restart (or use HA UI/CLI)"
@@ -49,72 +53,82 @@ help:
 
 # Show what files will be deployed
 status:
-	@echo "=== Backend Files to Deploy ==="
-	@for file in $(BACKEND_SRC); do \
-	  if [ -f "$$file" ]; then \
+	@echo "=== Files to Deploy ==="
+	@echo ""
+	@echo "Backend files (root level):"
+	@for file in $(BACKEND_FILES); do \
+	  fullpath="$(ROOT_DIR)/custom_components/logger_manager/$$file"; \
+	  if [ -f "$$fullpath" ]; then \
 	    echo "  ✓ $$file"; \
 	  else \
 	    echo "  ✗ $$file (MISSING)"; \
 	  fi \
 	done
 	@echo ""
-	@echo "=== UI Files to Deploy ==="
-	@if [ -f "$(UI_SRC)" ]; then \
-	  echo "  ✓ $(UI_SRC)"; \
-	else \
-	  echo "  ✗ $(UI_SRC) (MISSING)"; \
-	fi
-	@echo ""
-	@echo "Target: $(HA_USER)@$(HA_HOST):$(BACKEND_DST)"
-
-ui:
-	cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mkdir -p $$(dirname $(UI_DST)) && sudo rm -f $(UI_DST) && sudo mv /tmp/$(UI_TMP) $(UI_DST)"
-
-# Deploy frontend JS to HACS community path
-.PHONY: ui-hacs
-ui-hacs:
-	cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mkdir -p $$(dirname $(HACS_UI_DST)) && sudo rm -f $(HACS_UI_DST) && sudo mv /tmp/$(UI_TMP) $(HACS_UI_DST)"
-backend:
-	@echo "Creating backend directory on Home Assistant..."
-	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)"
-	@echo "Deploying backend files to Home Assistant..."
-	for file in $(BACKEND_SRC); do \
-	  fname=$$(basename $$file); \
-	  cat $$file | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$fname && sudo rm -f $(BACKEND_DST)/$$fname && sudo mv /tmp/$$fname $(BACKEND_DST)/$$fname"; \
+	@echo "Frontend files:"
+	@for file in $(FRONTEND_FILES); do \
+	  fullpath="$(ROOT_DIR)/custom_components/logger_manager/frontend/$$file"; \
+	  if [ -f "$$fullpath" ]; then \
+	    echo "  ✓ frontend/$$file"; \
+	  else \
+	    echo "  ✗ frontend/$$file (MISSING)"; \
+	  fi \
 	done
-
-# Legacy deployment (manual install paths)
-all-legacy: ui backend
+	@echo ""
+	@echo "Translation files:"
+	@for file in $(TRANSLATION_FILES); do \
+	  fullpath="$(ROOT_DIR)/custom_components/logger_manager/translations/$$file"; \
+	  if [ -f "$$fullpath" ]; then \
+	    echo "  ✓ translations/$$file"; \
+	  else \
+	    echo "  ✗ translations/$$file (MISSING)"; \
+	  fi \
+	done
+	@echo ""
+	@echo "Icon files:"
+	@for file in $(ICON_FILES); do \
+	  fullpath="$(ROOT_DIR)/custom_components/logger_manager/$$file"; \
+	  if [ -f "$$fullpath" ]; then \
+	    echo "  ✓ $$file"; \
+	  else \
+	    echo "  ✗ $$file (MISSING)"; \
+	  fi \
+	done
+	@echo ""
+	@echo "Deployment target: $(HA_USER)@$(HA_HOST):$(BACKEND_DST)"
 
 # Deploy complete integration to custom_components (mimics HACS installation)
-all-ha-install-ready:
+all:
 	@echo "Deploying complete integration to Home Assistant..."
 	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)"
 	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)/translations"
 	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)/frontend"
-	@echo "  → Backend Python files..."
-	@for file in $(BACKEND_SRC); do \
-	  fname=$$(basename $$file); \
-	  cat $$file | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$fname && sudo mv /tmp/$$fname $(BACKEND_DST)/$$fname"; \
+	@echo "  → Backend files..."
+	@for file in $(BACKEND_FILES); do \
+	  cat $(ROOT_DIR)/custom_components/logger_manager/$$file | \
+	    ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$file && sudo mv /tmp/$$file $(BACKEND_DST)/$$file"; \
 	done
-	@echo "  → Translations..."
-	@cat $(ROOT_DIR)/custom_components/logger_manager/translations/en.json | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/en.json && sudo mv /tmp/en.json $(BACKEND_DST)/translations/en.json"
-	@echo "  → Icons..."
-	@cat $(ROOT_DIR)/custom_components/logger_manager/icon.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon.png && sudo mv /tmp/icon.png $(BACKEND_DST)/icon.png"
-	@cat $(ROOT_DIR)/custom_components/logger_manager/icon@2x.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon@2x.png && sudo mv /tmp/icon@2x.png $(BACKEND_DST)/icon@2x.png"
-	@echo "  → Frontend module..."
-	@cat $(ROOT_DIR)/custom_components/logger_manager/frontend/__init__.py | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/frontend_init.py && sudo mv /tmp/frontend_init.py $(BACKEND_DST)/frontend/__init__.py"
-	@echo "  → Frontend card..."
-	@cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mv /tmp/$(UI_TMP) $(BACKEND_DST)/frontend/$(UI_TMP)"
+	@echo "  → Frontend files..."
+	@for file in $(FRONTEND_FILES); do \
+	  cat $(ROOT_DIR)/custom_components/logger_manager/frontend/$$file | \
+	    ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/frontend_$$file && sudo mv /tmp/frontend_$$file $(BACKEND_DST)/frontend/$$file"; \
+	done
+	@echo "  → Translation files..."
+	@for file in $(TRANSLATION_FILES); do \
+	  cat $(ROOT_DIR)/custom_components/logger_manager/translations/$$file | \
+	    ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$file && sudo mv /tmp/$$file $(BACKEND_DST)/translations/$$file"; \
+	done
+	@echo "  → Icon files..."
+	@for file in $(ICON_FILES); do \
+	  cat $(ROOT_DIR)/custom_components/logger_manager/$$file | \
+	    ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$file && sudo mv /tmp/$$file $(BACKEND_DST)/$$file"; \
+	done
 	@echo "✓ Complete integration deployed to $(BACKEND_DST)"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Restart Home Assistant"
 	@echo "  2. Go to Settings → Devices & Services → Add Integration"
 	@echo "  3. Search for 'Logger Manager'"
-
-# Default: complete installation
-all: all-ha-install-ready
 
 # Remove integration from all install paths
 clean:
