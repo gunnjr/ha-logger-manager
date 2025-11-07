@@ -22,7 +22,8 @@ BACKEND_SRC=$(ROOT_DIR)/custom_components/logger_manager/__init__.py \
             $(ROOT_DIR)/custom_components/logger_manager/const.py \
             $(ROOT_DIR)/custom_components/logger_manager/manifest.json \
             $(ROOT_DIR)/custom_components/logger_manager/strings.json \
-            $(ROOT_DIR)/custom_components/logger_manager/services.yaml
+            $(ROOT_DIR)/custom_components/logger_manager/services.yaml \
+            $(ROOT_DIR)/custom_components/logger_manager/frontend/__init__.py
 BACKEND_DST=/config/custom_components/logger_manager/
 
 .PHONY: ui ui-hacs backend all all-legacy all-ha-install-ready clean status help
@@ -101,6 +102,8 @@ all-ha-install-ready:
 	@echo "  → Icons..."
 	@cat $(ROOT_DIR)/custom_components/logger_manager/icon.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon.png && sudo mv /tmp/icon.png $(BACKEND_DST)/icon.png"
 	@cat $(ROOT_DIR)/custom_components/logger_manager/icon@2x.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon@2x.png && sudo mv /tmp/icon@2x.png $(BACKEND_DST)/icon@2x.png"
+	@echo "  → Frontend module..."
+	@cat $(ROOT_DIR)/custom_components/logger_manager/frontend/__init__.py | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/frontend_init.py && sudo mv /tmp/frontend_init.py $(BACKEND_DST)/frontend/__init__.py"
 	@echo "  → Frontend card..."
 	@cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mv /tmp/$(UI_TMP) $(BACKEND_DST)/frontend/$(UI_TMP)"
 	@echo "✓ Complete integration deployed to $(BACKEND_DST)"

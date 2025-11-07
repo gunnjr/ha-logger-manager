@@ -264,18 +264,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register frontend card resource once
     if not hass.data[DOMAIN].get("frontend_registered", False):
-        try:
-            # Register the frontend card as a Lovelace resource
-            await hass.http.async_register_static_paths([
-                {
-                    "url": f"/hacsfiles/{DOMAIN}/ha-logger-multiselect-card.js",
-                    "path": hass.config.path(f"custom_components/{DOMAIN}/frontend/ha-logger-multiselect-card.js"),
-                }
-            ])
-            hass.data[DOMAIN]["frontend_registered"] = True
-            _LOGGER.debug("Frontend card resource registered")
-        except Exception as e:
-            _LOGGER.warning(f"Could not register frontend resource automatically: {e}. Users can add it manually via Dashboard Resources.")
+        from .frontend import JSModuleRegistration
+        module_register = JSModuleRegistration(hass)
+        await module_register.async_register()
+        hass.data[DOMAIN]["frontend_registered"] = True
 
     # Initialize storage
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
@@ -400,8 +392,28 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    # Note: We intentionally do NOT unregister services or WebSocket commands here.
-    # These are global resources that should remain available even if the config entry
-    # is removed. They'll be cleaned up when Home Assistant shuts down.
+    # Unregister services if they were registered
+    if hass.data[DOMAIN].get("services_registered", False):
+        hass.services.async_remove(DOMAIN, "apply_levels")
+        hass.services.async_remove(DOMAIN, "test_logger_discovery")
+        hass.services.async_remove(DOMAIN, "refresh_logger_cache")
+        hass.data[DOMAIN]["services_registered"] = False
+        _LOGGER.debug("Unregistered Logger Manager services")
+
+    # Unregister WebSocket command
+    try:
+        hass.components.websocket_api.async_unregister_command("logger_manager/get_loggers")
+        _LOGGER.debug("Unregistered WebSocket command")
+    except (KeyError, AttributeError):
+        # Command not registered or websocket_api not available
+        pass
+
+    # Unregister frontend resources
+    if hass.data[DOMAIN].get("frontend_registered", False):
+        from .frontend import JSModuleRegistration
+        module_register = JSModuleRegistration(hass)
+        await module_register.async_unregister()
+        hass.data[DOMAIN]["frontend_registered"] = False
+        _LOGGER.debug("Unregistered frontend resources")
 
     return unload_ok
