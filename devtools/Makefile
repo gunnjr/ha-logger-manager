@@ -3,6 +3,7 @@
 # === CONFIGURATION ===
 HA_HOST=homeassistant.local
 HA_USER=hassio
+HA_HTTP_PORT=8123
 
 # Path to project root (Makefile is in devtools/)
 ROOT_DIR=..
@@ -24,16 +25,19 @@ BACKEND_SRC=$(ROOT_DIR)/custom_components/logger_manager/__init__.py \
             $(ROOT_DIR)/custom_components/logger_manager/services.yaml
 BACKEND_DST=/config/custom_components/logger_manager/
 
-.PHONY: ui ui-hacs backend all status help
+.PHONY: ui ui-hacs backend all all-legacy all-ha-install-ready clean status help
 
 # Show help by default
 help:
 	@echo "Logger Manager Deployment Targets:"
-	@echo "  make backend     - Deploy backend Python files to HA"
-	@echo "  make ui          - Deploy UI card (legacy path)"
-	@echo "  make ui-hacs     - Deploy UI card (HACS path)"
-	@echo "  make all         - Deploy both UI and backend"
-	@echo "  make status      - Show what would be deployed"
+	@echo "  make all             - Deploy complete integration (default)"
+	@echo "  make all-ha-install-ready - Deploy complete integration (explicit)"
+	@echo "  make all-legacy      - Deploy UI and backend to legacy paths"
+	@echo "  make backend         - Deploy backend Python files to HA"
+	@echo "  make ui              - Deploy UI card (legacy path)"
+	@echo "  make ui-hacs         - Deploy UI card (HACS path)"
+	@echo "  make clean           - Remove integration from all install paths"
+	@echo "  make status          - Show what would be deployed"
 	@echo ""
 	@echo "After deployment, restart HA via:"
 	@echo "  Settings → System → Restart (or use HA UI/CLI)"
@@ -70,10 +74,73 @@ ui:
 ui-hacs:
 	cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mkdir -p $$(dirname $(HACS_UI_DST)) && sudo rm -f $(HACS_UI_DST) && sudo mv /tmp/$(UI_TMP) $(HACS_UI_DST)"
 backend:
+	@echo "Creating backend directory on Home Assistant..."
+	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)"
+	@echo "Deploying backend files to Home Assistant..."
 	for file in $(BACKEND_SRC); do \
 	  fname=$$(basename $$file); \
 	  cat $$file | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$fname && sudo rm -f $(BACKEND_DST)/$$fname && sudo mv /tmp/$$fname $(BACKEND_DST)/$$fname"; \
 	done
 
-all: ui backend
+# Legacy deployment (manual install paths)
+all-legacy: ui backend
+
+# Deploy complete integration to custom_components (mimics HACS installation)
+all-ha-install-ready:
+	@echo "Deploying complete integration to Home Assistant..."
+	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)"
+	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)/translations"
+	@ssh $(HA_USER)@$(HA_HOST) "sudo mkdir -p $(BACKEND_DST)/frontend"
+	@echo "  → Backend Python files..."
+	@for file in $(BACKEND_SRC); do \
+	  fname=$$(basename $$file); \
+	  cat $$file | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$$fname && sudo mv /tmp/$$fname $(BACKEND_DST)/$$fname"; \
+	done
+	@echo "  → Translations..."
+	@cat $(ROOT_DIR)/custom_components/logger_manager/translations/en.json | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/en.json && sudo mv /tmp/en.json $(BACKEND_DST)/translations/en.json"
+	@echo "  → Icons..."
+	@cat $(ROOT_DIR)/custom_components/logger_manager/icon.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon.png && sudo mv /tmp/icon.png $(BACKEND_DST)/icon.png"
+	@cat $(ROOT_DIR)/custom_components/logger_manager/icon@2x.png | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/icon@2x.png && sudo mv /tmp/icon@2x.png $(BACKEND_DST)/icon@2x.png"
+	@echo "  → Frontend card..."
+	@cat $(UI_SRC) | ssh $(HA_USER)@$(HA_HOST) "cat > /tmp/$(UI_TMP) && sudo mv /tmp/$(UI_TMP) $(BACKEND_DST)/frontend/$(UI_TMP)"
+	@echo "✓ Complete integration deployed to $(BACKEND_DST)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Restart Home Assistant"
+	@echo "  2. Go to Settings → Devices & Services → Add Integration"
+	@echo "  3. Search for 'Logger Manager'"
+
+# Default: complete installation
+all: all-ha-install-ready
+
+# Remove integration from all install paths
+clean:
+	@echo "Checking if Home Assistant is running..."
+	@if nc -z $(HA_HOST) $(HA_HTTP_PORT) > /dev/null; then \
+	  echo ""; \
+	  echo "ERROR: Home Assistant is currently running!"; \
+	  echo ""; \
+	  echo "Please stop Home Assistant before cleaning:"; \
+	  echo "  1. Go to Settings → System → Restart"; \
+	  echo "  2. OR use: ha core stop"; \
+	  echo "  3. Then run 'make clean' again"; \
+	  echo ""; \
+	  exit 1; \
+	fi
+	@echo "✓ Home Assistant is stopped"
+	@echo ""
+	@echo "Removing Logger Manager from all install paths..."
+	@echo "  → Removing custom_components/logger_manager/"
+	@ssh $(HA_USER)@$(HA_HOST) "sudo rm -rf $(BACKEND_DST)"
+	@echo "  → Removing www/logger_manager/"
+	@ssh $(HA_USER)@$(HA_HOST) "sudo rm -rf /config/www/logger_manager"
+	@echo "  → Removing www/community/logger_manager/"
+	@ssh $(HA_USER)@$(HA_HOST) "sudo rm -rf /config/www/community/logger_manager"
+	@echo ""
+	@echo "✓ Logger Manager removed from all paths"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Start Home Assistant"
+	@echo "  2. Deploy integration using 'make all'"
+	@echo "  3. Restart Home Assistant again"
 
