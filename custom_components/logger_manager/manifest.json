@@ -3,6 +3,7 @@
   "name": "Logger Manager",
   "codeowners": ["@gunnjr"],
   "config_flow": true,
+  "dependencies": ["http", "lovelace"],
   "documentation": "https://github.com/gunnjr/ha-logger-manager",
   "integration_type": "service",
   "iot_class": "local_polling",
