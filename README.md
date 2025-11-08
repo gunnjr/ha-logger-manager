@@ -20,105 +20,24 @@ A Home Assistant integration for managing logging levels
 
 ## Overview
 
-Logger Manager solves a common frustration for Home Assistant developers and power users: **managing logging levels is tedious and error-prone**.
+Logger Manager aims to solve a common frustration for Home Assistant developers and power users: **managing logging levels is tedious**.
+## Target Users
+**Power Home Assistant users** who need to leverage HA debug logging for:
+- Custom integration development
+- Issue diagnosis and troubleshooting
+- System optimization and monitoring
+- Integration debugging and testing
 
-### The Problem
+## The Problem
+> **Power HA users need precise, discoverable, and fast logger control for debugging/development, but current methods are either too slow (configuration.yaml + reboot), imprecise (setting default logger level), too obscure (non-discoverable loggers), or too time consuming (writing use-case specific logger control scripts), forcing users to miss out on otherwise helpful debug logging or deal with unmanageably verbose default debug logging.**
 
-When troubleshooting Home Assistant issues, you need to enable debug logging for specific integrations. The native approach requires:
-- Opening Developer Tools → Services
-- Manually typing logger names (e.g., `homeassistant.components.zha`)
-- Calling `logger.set_level` with exact syntax
-- Remembering which loggers you've modified
-- Repeating this process after every HA restart (changes don't persist)
+## The Solution
 
-This workflow is slow, requires memorizing logger naming conventions, and offers no visibility into your current logging configuration.
-
-### The Solution
-
-Logger Manager provides three integrated components that work together to make logging management effortless:
-
-**1. Interactive UI Card** (the primary interface)
-- Searchable multi-select dropdown of all available loggers
-- One-click level changes with visual feedback
-- Bulk operations - modify multiple loggers at once
-- No typing required, no syntax to remember
-
-**2. Persistent State Sensor** (`sensor.logger_levels`)
-- Tracks which loggers you've customized and their current levels
-- Shows default log level and count of managed loggers
-- Updates every 10 seconds for real-time visibility
-- Powers the UI card and enables automations
-
-**3. Management Services**
-- `logger_manager.apply_levels` - Programmatically change logger levels
-- `logger_manager.refresh_logger_cache` - Force refresh available loggers
-- Services maintain managed logger state across HA restarts
-- Enable automation-based logging control
-
-### Why the UI Card Matters Most
-
-While the sensor and services are useful standalone (especially for automations), **the UI card is the primary reason to use Logger Manager**. It transforms a multi-step, error-prone workflow into a simple point-and-click operation. The backend components exist primarily to support this seamless UI experience.
-
-## Key Feature: The UI Card
-
-![Logger Manager Card Overview](screenshots/logger-card-overview.png)
-
-The Logger Manager card provides:
-- **Searchable multi-select dropdown** of all available loggers
-- **One-click level changes** (Critical, Error, Warning, Info, Debug)
-- **Visual feedback** on current logger states
-- **Bulk operations** - change multiple loggers at once
-
-This is the primary reason to use Logger Manager. The backend services and sensor exist to support the UI, but the UI is where the real value lies.
-
-![Logger Dropdown Search](screenshots/logger-dropdown-search.png)
-
-## Secondary Features
-
-### Logger State Sensor
-
-![Logger Sensor State](screenshots/logger-sensor-state.png)
-
-A sensor (`sensor.logger_levels`) that tracks:
-- Current default log level
-- List of loggers you've customized and their levels
-- Count of customized loggers
-- Updates every 10 seconds
-
-### Services
-
-#### `logger_manager.apply_levels`
-
-Change log levels for one or more loggers. Similar to HA's built-in `logger.set_level` but maintains a list of managed loggers for the UI.
-
-```yaml
-service: logger_manager.apply_levels
-data:
-  level: debug
-  loggers:
-    - homeassistant.components.zha
-    - custom_components.logger_manager
-```
-
-#### `logger_manager.refresh_logger_cache`
-
-Manually refresh the list of available loggers (normally refreshes every 30 minutes automatically).
+Logger Manager aims to solve this with a **power user targeted** user interface that makes it easy to discover, select, and configure loggers. Using the provided lovelace card, users can quickly dial in logging specific to their task or challenge.
 
 ## Installation
 
-### Via HACS (Recommended)
-
-#### Option 1: HACS Default Repository (Coming Soon)
-Once Logger Manager is accepted into HACS defaults:
-1. Open HACS → Integrations
-2. Click "+ Explore & Download Repositories"
-3. Search for "Logger Manager"
-4. Click "Download"
-5. Restart Home Assistant
-6. Continue to [Setup](#setup) below
-
-#### Option 2: HACS Custom Repository (Current Method)
-Until Logger Manager is in HACS defaults:
+### HACS Custom Repository (Current Method)
 1. Open HACS → Integrations
 2. Click the three dots (⋮) in the top-right corner
 3. Select "Custom repositories"
@@ -129,17 +48,7 @@ Until Logger Manager is in HACS defaults:
 8. Restart Home Assistant
 9. Continue to [Setup](#setup) below
 
-### Manual Installation
-
-If you prefer not to use HACS:
-
-1. Download the latest release from [GitHub Releases](https://github.com/gunnjr/ha-logger-manager/releases)
-2. Extract the archive
-3. Copy the `custom_components/logger_manager` directory to your Home Assistant `config/custom_components/` directory
-   - Full path should be: `config/custom_components/logger_manager/`
-   - Should contain: `__init__.py`, `manifest.json`, `sensor.py`, `config_flow.py`, etc.
-4. Restart Home Assistant
-5. Continue to [Setup](#setup) below
+### HACS Default Repository (planned)
 
 ## Setup
 
@@ -158,9 +67,9 @@ The integration will automatically:
 - Register `logger_manager.apply_levels` and `logger_manager.refresh_logger_cache` services
 - Register the frontend card resource (storage mode only)
 
-### Step 2: Add the UI Card to Your Dashboard
+### Step 2: Add the UI Card to any Dashboard
 
-The card resource is automatically registered when you add the integration (for storage mode dashboards). To use it:
+The card resource is automatically registered when you add the integration. To use it:
 
 1. Navigate to any dashboard
 2. Click **Edit Dashboard** (top-right)
@@ -174,87 +83,82 @@ The card resource is automatically registered when you add the integration (for 
 - Check Settings → Dashboards → Resources to verify the card is listed
 - For YAML mode dashboards, see [YAML Configuration](#yaml-configuration) below
 
-#### YAML Configuration
+## Solution Components
+### How the components work together
+The UI is the primarily intended value of this integration, supported by the underlying sensor and services.  However, the unterlying componts are availible for direct access and can be useful on a stand-alone basis (especially for automations), **the UI card is the primary reason to use Logger Manager**.
+### 1. Interactive Lovelace Card
+- Deployable to any lovelace dashboard
+- Searchable multi-select dropdown of available loggers
+- Easy logger level changes with visual feedback (Critical, Error, Warning, Info, Debug, Notset)
+- Bulk operations - modify multiple loggers at once
 
-If you prefer YAML or use YAML mode dashboards:
+<table>
+<tr>
+<td width="50%">
+<img src="screenshots/logger-card-overview.png" width="100%" alt="Logger Manager Card Overview"/>
+<p align="center"><em>Logger Manager Card</em></p>
+</td>
+<td width="50%">
+<img src="screenshots/logger-dropdown-search.png" width="100%" alt="Logger Dropdown Search"/>
+<p align="center"><em>Filtered by search string</em></p>
+</td>
+</tr>
+</table>
 
-```yaml
-type: custom:ha-logger-multiselect-card
-entity: sensor.logger_levels
-```
+### 2. Persistent State Sensor (`sensor.logger_levels`)
+- Tracks which loggers you've customized and their current levels
+- Shows default log level and count of managed loggers
+- Powers the UI card and enables automations
 
-**Note for YAML Mode Users:** If your dashboards are in YAML mode (not storage mode), you'll need to manually add the card resource:
+![Logger Sensor State](screenshots/logger-sensor-state.png)
 
-1. Go to Settings → Dashboards → Resources tab
-2. Click "+ Add Resource"
-3. URL: `/hacsfiles/logger_manager/ha-logger-multiselect-card.js`
-4. Resource type: `JavaScript Module`
-5. Click "Create"
-
-## Usage
-
-### Via UI Card (Recommended)
-
-1. Open the card on your dashboard
-2. Use the dropdown to select loggers (search and multi-select supported)
-3. Click a log level button
-4. Click Apply
-
-### Via Service
+### 3. Management Services
+- `logger_manager.apply_levels` - Programmatically change and track logger levels
+- Services maintain managed logger state across HA restarts
+- Enable automation-based logging control
+- Similar to HA's built-in `logger.set_level` but maintains the list of managed loggers on the sensor for use by the UI and otherwise.
 
 ```yaml
 service: logger_manager.apply_levels
 data:
   level: debug
   loggers:
-    - homeassistant.components.mqtt
+    - homeassistant.components.zha
     - custom_components.logger_manager
 ```
 
-### Common Logger Names
-
-**Core integrations:**
-```
-homeassistant.components.<integration_name>
-```
+### Availible loggers: Common Logger Names
+The list of availible loggers is currenly contrained to those for envisioned usecases. The critera is currently hardcoded as follows. The developer intends to make this configurable. 
+### 1. Core integrations:
+Loggers with names of containing: `homeassistant`
 Examples: `homeassistant.components.zha`, `homeassistant.components.mqtt`
 
-**Custom integrations:**
-```
-custom_components.<integration_name>
-```
+### 2. Custom integrations:
+Loggers with names containing: `custom_components`
 Examples: `custom_components.logger_manager`, `custom_components.hacs`
 
-**System loggers:**
-```
-homeassistant.core
-homeassistant.loader
-homeassistant.setup
-```
+### 3. Commonly used system loggers:
+Loggers with names containing: `asyncio`, `aiohttp`, `urllib3`, `requests`, `aiodns`, `aiofiles`, and `websockets`
 
-## Planned Enhancements
+## Anticipated Enhancements
+As time permits, future versions will be enhanced to provide:
 
-Future versions will add:
-
-### v1.1: Configurable Logger Discovery
+### Configurable Logger Discovery
 - Make logger discovery patterns configurable
 - Currently hardcoded to find HA core, custom components, and system loggers
 - Will allow users to add custom patterns for third-party libraries
 
-### v1.2: Logger Management UI
-- View all managed loggers in a dedicated interface
+### Logger Management UI
+- View all managed loggers in a dedicated card
 - Edit or remove managed logger levels
-- See history of changes
 
-### v1.3: Default Log Level Control
+### Default Log Level Control
 - UI to change Home Assistant's default log level
 - Currently can only be changed via configuration.yaml
 
-### v2.0: Integrated Dashboard
+### Integrated Dashboard
 - Pre-built dashboard combining all Logger Manager features
 - One-stop shop for all logging needs
-
-No timeline promised - these will come as time permits and based on user feedback.
 
 ## Limitations
 
@@ -262,7 +166,7 @@ No timeline promised - these will come as time permits and based on user feedbac
 - Some third-party libraries may not follow HA logging conventions
 - The sensor updates every 10 seconds, not instantly
 - WebSocket API for logger discovery caches results for 30 minutes
-- Logger discovery patterns are currently hardcoded (v1.1 will make this configurable)
+- Logger discovery patterns are currently hardcoded
 
 ## Requirements
 
