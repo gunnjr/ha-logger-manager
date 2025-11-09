@@ -3,7 +3,9 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import DOMAIN
+from homeassistant.helpers import selector
+from .const import DOMAIN, CONF_FILTER_PATTERNS, DEFAULT_FILTER_PATTERNS
+
 
 class LoggerManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Logger Manager."""
@@ -28,11 +30,51 @@ class LoggerManagerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return LoggerManagerOptionsFlowHandler(config_entry)
-
+        return LoggerManagerOptionsFlowHandler()
 class LoggerManagerOptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
+    """Options flow for runtime settings."""
 
     async def async_step_init(self, user_input=None):
-        return self.async_show_form(step_id="init", data_schema=vol.Schema({}))
+        errors: dict[str, str] = {}
+
+        # Current extras; defaults are ALWAYS applied in code (not shown here)
+        current_extras = self.config_entry.options.get(CONF_FILTER_PATTERNS, [])
+        current_text = "\n".join(current_extras) if current_extras else ""
+
+        if user_input is not None:
+            raw = user_input.get(CONF_FILTER_PATTERNS, "")
+            # Normalize: split → strip → drop empties → de-dupe (preserve order)
+            seen = set()
+            extras: list[str] = []
+            for line in raw.splitlines():
+                p = line.strip()
+                if not p:
+                    continue
+                if p == "*":
+                    errors[CONF_FILTER_PATTERNS] = "too_broad"
+                if p not in seen:
+                    seen.add(p)
+                    extras.append(p)
+
+            if not errors:
+                # Save only the extras (defaults are applied at runtime)
+                return self.async_create_entry(
+                    title="Logger Manager",
+                    data={CONF_FILTER_PATTERNS: extras},
+                )
+
+        # Show the form
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Optional(
+                    CONF_FILTER_PATTERNS,
+                    default=current_text
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                )
+            }),
+            errors=errors,
+        )
+
+

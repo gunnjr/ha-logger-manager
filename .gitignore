@@ -62,3 +62,7 @@ www/community/
 www/community/logger_manager/
 www/logger_manager/
 www/logger_manager/ha-logger-multiselect-card.js
+
+# devtools
+devtools/create-issue.sh
+devtools/deploy-card.sh

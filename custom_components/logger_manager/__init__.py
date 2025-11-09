@@ -5,12 +5,16 @@ from datetime import datetime
 import logging
 import time
 import voluptuous as vol
+import fnmatch
+import hashlib, json
 
 from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.storage import Store
+
+from .const import CONF_FILTER_PATTERNS, DEFAULT_FILTER_PATTERNS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +38,33 @@ SCHEMA = vol.Schema({
 # Test schema (no parameters needed)
 TEST_SCHEMA = vol.Schema({})
 
+def _effective_filtered_loggers(all_loggers: list[str], entry) -> list[str]:
+    """Return sorted unique logger names matched by built-in + user patterns (glob)."""
+    extras = entry.options.get(CONF_FILTER_PATTERNS, [])
+    # order-preserving de-dupe of patterns
+    seen = set()
+    patterns: list[str] = []
+    for p in DEFAULT_FILTER_PATTERNS + extras:
+        if p and p not in seen:
+            seen.add(p)
+            patterns.append(p)
+
+    matched: set[str] = set()
+
+    # exact matches first (fast path)
+    for p in patterns:
+        if p in all_loggers:
+            matched.add(p)
+
+    # glob matches
+    for p in patterns:
+        # You already block "*" in the options flow; no need to re-check here
+        for name in all_loggers:
+            if fnmatch.fnmatch(name, p):
+                matched.add(name)
+
+    return sorted(matched)
+
 
 async def _discover_available_loggers(hass: HomeAssistant) -> list[str]:
     """Discover available loggers from Python logging system.
@@ -41,35 +72,15 @@ async def _discover_available_loggers(hass: HomeAssistant) -> list[str]:
     Extracts the core discovery logic from the test service for reuse.
     Returns a sorted list of relevant logger names.
     """
-    # JG comment to copilot: I just realized that we are explicit in the loggers that we want to include.
-    # I'm concerned that this may miss some loggers that users want to debug.
-    # Specifically, loggers related to integrations that are not under "homeassistant" or "custom_components".
-    # Do such loggers comply with a naming convention we can use to include them? (perhaps they're already picked up by
-    # our inclusion of loggers with "homeassistant" in the name?)
     try:
         logger_dict = logging.Logger.manager.loggerDict
 
         # Get all string logger names
         all_loggers = [name for name in logger_dict.keys() if isinstance(name, str)]
 
-        # Filter to relevant loggers (HA core + custom components + key libraries)
-        relevant_loggers = []
-
-        # Add HA core loggers
-        ha_loggers = [name for name in all_loggers if "homeassistant" in name]
-        relevant_loggers.extend(ha_loggers)
-
-        # Add custom component loggers
-        custom_loggers = [name for name in all_loggers if "custom_components" in name]
-        relevant_loggers.extend(custom_loggers)
-
-        # Add key library loggers that users often debug
-        key_libraries = ["asyncio", "aiohttp", "urllib3", "requests", "aiodns", "aiofiles", "websockets"]
-        lib_loggers = [name for name in all_loggers if name in key_libraries]
-        relevant_loggers.extend(lib_loggers)
-
-        # Remove duplicates and sort
-        unique_loggers = sorted(list(set(relevant_loggers)))
+        # filter list based on patterns from config entry
+        entry = hass.data[DOMAIN].get("entry")
+        unique_loggers = _effective_filtered_loggers(all_loggers, entry)
 
         _LOGGER.debug(f"Logger discovery found {len(unique_loggers)} relevant loggers from {len(all_loggers)} total")
 
@@ -79,6 +90,24 @@ async def _discover_available_loggers(hass: HomeAssistant) -> list[str]:
         _LOGGER.error(f"Logger discovery failed: {e}", exc_info=True)
         return []
 
+def _patterns_fp(patterns: list[str]) -> str:
+    """Return a deterministic fingerprint for a pattern list."""
+    return hashlib.sha1(json.dumps(patterns).encode("utf-8")).hexdigest()
+
+def _current_patterns(hass) -> list[str]:
+    """Return the effective pattern list: built-ins + user extras."""
+    entry = hass.data.get(DOMAIN, {}).get("entry")
+    extras = []
+    if entry and entry.options:
+        extras = entry.options.get(CONF_FILTER_PATTERNS, [])
+    # Combine, remove dups, preserve order
+    seen = set()
+    patterns = []
+    for p in DEFAULT_FILTER_PATTERNS + extras:
+        if p and p not in seen:
+            seen.add(p)
+            patterns.append(p)
+    return patterns
 
 def _get_logger_cache(hass: HomeAssistant) -> dict | None:
     """Get cached logger data if still valid."""
@@ -87,7 +116,7 @@ def _get_logger_cache(hass: HomeAssistant) -> dict | None:
         return None
 
     # Check if cache is still valid
-    if _is_cache_valid(cache_data):
+    if _is_cache_valid(hass, cache_data):
         return cache_data
 
     # Cache expired, remove it
@@ -99,9 +128,12 @@ def _get_logger_cache(hass: HomeAssistant) -> dict | None:
 
 def _update_logger_cache(hass: HomeAssistant, loggers: list[str]) -> None:
     """Update the logger cache with new data."""
+    patterns = _current_patterns(hass)
+    
     cache_data = {
         "loggers": loggers,
         "timestamp": time.time(),
+        "patterns_fp": _patterns_fp(patterns),
         "version": 1
     }
 
@@ -112,14 +144,19 @@ def _update_logger_cache(hass: HomeAssistant, loggers: list[str]) -> None:
     _LOGGER.debug(f"Logger cache updated with {len(loggers)} loggers")
 
 
-def _is_cache_valid(cache_data: dict) -> bool:
-    """Check if cache data is still within TTL."""
-    if not cache_data or "timestamp" not in cache_data:
+
+def _is_cache_valid(hass: HomeAssistant, cache_data: dict) -> bool:
+    """Check if cache data is still within TTL and patterns match current config."""
+    if not cache_data or "timestamp" not in cache_data or "patterns_fp" not in cache_data:
         return False
 
-    age = time.time() - cache_data["timestamp"]
-    return age < CACHE_TTL
+    # time-to-live
+    if time.time() - cache_data["timestamp"] >= CACHE_TTL:
+        return False
 
+    # pattern fingerprint
+    current_fp = _patterns_fp(_current_patterns(hass))
+    return cache_data["patterns_fp"] == current_fp
 
 @websocket_api.websocket_command({
     vol.Required("type"): "logger_manager/get_loggers",
@@ -194,62 +231,6 @@ async def async_refresh_logger_cache(call: ServiceCall) -> None:
     except Exception as e:
         _LOGGER.error(f"Manual cache refresh failed: {e}", exc_info=True)
 
-
-async def async_test_logger_discovery(call: ServiceCall) -> None:
-    """Test service to validate logger discovery approach."""
-    hass = call.hass
-
-    try:
-        _LOGGER.info("🔍 Logger Discovery Test Starting...")
-
-        # Test the new discovery function
-        new_loggers = await _discover_available_loggers(hass)
-
-        # Also test the raw approach for comparison
-        logger_dict = logging.Logger.manager.loggerDict
-        all_loggers = [name for name in logger_dict.keys() if isinstance(name, str)]
-
-        _LOGGER.info(f"Raw logger_dict size: {len(logger_dict)}")
-        _LOGGER.info(f"New discovery function found: {len(new_loggers)} loggers")
-        _LOGGER.info(f"Raw discovery found: {len(all_loggers)} loggers")
-
-        # Sample by categories for comparison
-        ha_loggers = [name for name in all_loggers if "homeassistant" in name]
-        custom_loggers = [name for name in all_loggers if "custom_components" in name]
-        lib_loggers = [name for name in all_loggers if name in ["asyncio", "aiohttp", "urllib3"]]
-
-        _LOGGER.info(f"HA loggers found: {len(ha_loggers)}")
-        _LOGGER.info(f"Custom component loggers: {len(custom_loggers)}")
-        _LOGGER.info(f"Library loggers: {len(lib_loggers)}")
-
-        # Test cache functionality
-        _update_logger_cache(hass, new_loggers)
-        cached_data = _get_logger_cache(hass)
-        cache_valid = _is_cache_valid(cached_data) if cached_data else False
-
-        _LOGGER.info(f"Cache test - stored: {len(cached_data['loggers']) if cached_data else 0}, valid: {cache_valid}")
-
-        # Create test result sensor
-        hass.states.async_set("sensor.logger_discovery_test", len(new_loggers), {
-            "new_discovery_count": len(new_loggers),
-            "raw_discovery_count": len(all_loggers),
-            "ha_loggers": len(ha_loggers),
-            "custom_loggers": len(custom_loggers),
-            "sample_discovered": sorted(new_loggers)[:20],
-            "cache_working": cache_valid,
-            "test_time": datetime.now().isoformat(),
-        })
-
-        _LOGGER.info("✅ Logger discovery test completed successfully")
-
-    except Exception as e:
-        _LOGGER.error(f"❌ Logger discovery test failed: {e}", exc_info=True)
-        hass.states.async_set("sensor.logger_discovery_test", "error", {
-            "error": str(e),
-            "test_time": datetime.now().isoformat(),
-        })
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Logger Manager from a config entry."""
 
@@ -260,6 +241,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "last_updated": None,
             "services_registered": False,
             "frontend_registered": False,
+            "entry": entry # Make the ConfigEntry available to helpers (e.g., websocket, discovery)
         }
 
     # Register frontend card resource once
@@ -376,7 +358,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Register services
         hass.services.async_register(DOMAIN, "apply_levels", handle_apply_levels)
-        hass.services.async_register(DOMAIN, "test_logger_discovery", async_test_logger_discovery, schema=TEST_SCHEMA)
         hass.services.async_register(DOMAIN, "refresh_logger_cache", async_refresh_logger_cache, schema=TEST_SCHEMA)
 
         # Register WebSocket command
@@ -388,6 +369,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Forward entry setup to sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+   # Define function to be used as update listener
+    async def _update_listener(hass, entry) -> None:
+        await hass.config_entries.async_reload(entry.entry_id)
+
+    # Register the update listener and capture a pointer to the unregister function
+    unload_listener = entry.add_update_listener(_update_listener)    
+
+    # Register the unload function
+    entry.async_on_unload(unload_listener)
+
     return True
 
 
@@ -396,10 +387,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
+    # Config-entry update listener is auto-unregistered via entry.async_on_unload() in async_setup_entry
+
     # Unregister services if they were registered
     if hass.data[DOMAIN].get("services_registered", False):
         hass.services.async_remove(DOMAIN, "apply_levels")
-        hass.services.async_remove(DOMAIN, "test_logger_discovery")
         hass.services.async_remove(DOMAIN, "refresh_logger_cache")
         hass.data[DOMAIN]["services_registered"] = False
         _LOGGER.debug("Unregistered Logger Manager services")

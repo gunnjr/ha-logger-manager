@@ -14,8 +14,14 @@
     "step": {
       "init": {
         "title": "Logger Manager Options",
-        "description": "Logger Manager currently has no configurable options. All functionality is available through:\n\n• sensor.logger_levels entity\n• logger_manager services\n• Dashboard card (automatically added to resources, add card to dashboard via UI)\n\nCheck the documentation for usage examples."
+        "description": "Add **extra** glob patterns to widen the list of logger names shown in the UI. These are **additive** to built-in defaults and do not replace them.\n\n• Use glob wildcards (`*`, `?`)\n• One pattern per line\n• Examples: `homeassistant.components.zha*`, `custom_components.logger_manager*`, `asyncio`\n\n⚠️ Avoid overly broad patterns like `*` — this may list thousands of loggers and impact performance.",
+        "data": {
+          "extra_filter_patterns": "Additional patterns (one per line)"
+        }
       }
+    },
+    "error": {
+      "too_broad": "Pattern `*` is too broad. Please use a more specific glob."
     }
   }
 }
