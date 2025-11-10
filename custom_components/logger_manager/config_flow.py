@@ -37,44 +37,45 @@ class LoggerManagerOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         errors: dict[str, str] = {}
 
-        # Current extras; defaults are ALWAYS applied in code (not shown here)
-        current_extras = self.config_entry.options.get(CONF_FILTER_PATTERNS, [])
-        current_text = "\n".join(current_extras) if current_extras else ""
-
         if user_input is not None:
-            raw = user_input.get(CONF_FILTER_PATTERNS, "")
-            # Normalize: split → strip → drop empties → de-dupe (preserve order)
-            seen = set()
-            extras: list[str] = []
-            for line in raw.splitlines():
-                p = line.strip()
+            raw = user_input.get(CONF_FILTER_PATTERNS, [])
+
+            # Accept either a list (new) or legacy string (old)
+            if isinstance(raw, str):
+                lines = [ln.strip() for ln in raw.splitlines()]
+            elif isinstance(raw, list):
+                lines = [str(x).strip() for x in raw]
+            else:
+                lines = []
+
+            # Normalize, dedupe, and guardrail
+            seen, extras = set(), []
+            for p in lines:
                 if not p:
                     continue
                 if p == "*":
                     errors[CONF_FILTER_PATTERNS] = "too_broad"
+                    continue
                 if p not in seen:
                     seen.add(p)
                     extras.append(p)
 
             if not errors:
-                # Save only the extras (defaults are applied at runtime)
                 return self.async_create_entry(
                     title="Logger Manager",
                     data={CONF_FILTER_PATTERNS: extras},
                 )
 
         # Show the form
+        current_extras = entry.options.get(CONF_FILTER_PATTERNS, [])
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Optional(
                     CONF_FILTER_PATTERNS,
-                    default=current_text
-                ): selector.TextSelector(
-                    selector.TextSelectorConfig(multiline=True)
-                )
+                    default=current_extras or []
+                ): selector.ObjectSelector()
             }),
             errors=errors,
         )
-
-
+        

@@ -14,7 +14,7 @@
     "step": {
       "init": {
         "title": "Logger Manager Options",
-        "description": "Add **extra** glob patterns to widen the list of logger names shown in the UI. These are **additive** to built-in defaults and do not replace them.\n\n• Use glob wildcards (`*`, `?`)\n• One pattern per line\n• Examples: `homeassistant.components.zha*`, `custom_components.logger_manager*`, `asyncio`\n\n⚠️ Avoid overly broad patterns like `*` — this may list thousands of loggers and impact performance.",
+        "description": "YAML list of glob patterns (one per line). Supports glob wildcards (`*`, `?`). These are **additive** to built-in defaults and do not replace them.\n\n• Examples: `homeassistant.components.zha*`, `custom_components.logger_manager*`, `asyncio`\n\n⚠️ Avoid overly broad patterns like `*` — this may list thousands of loggers and impact performance.",
         "data": {
           "extra_filter_patterns": "Additional patterns (one per line)"
         }
