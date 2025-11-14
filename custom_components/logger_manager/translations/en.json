@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Logger Manager",
-        "description": "Logger Manager helps you manage Home Assistant logging levels.\n\nAfter setup:\n• Check sensor.logger_levels for current state\n• Use logger_manager.apply_levels service to change log levels\n• The Logger Manager card will be automatically added to Dashboard Resources (storage mode only)\n• Add the card to your dashboard for a visual interface\n\nNo configuration needed - click Submit to continue."
+        "description": "Logger Manager helps you manage Home Assistant logging levels.\n\nAfter setup:\n• Check sensor.logger_levels for current state\n• Use logger_manager.apply_levels service to change log levels\n• The Logger Manager card will be automatically added to Dashboard Resources (storage mode only)\n• Add the card to your dashboard for a visual interface."
       }
     },
     "abort": {
@@ -14,7 +14,7 @@
     "step": {
       "init": {
         "title": "Logger Manager Options",
-        "description": "YAML list of glob patterns (one per line). Supports glob wildcards (`*`, `?`). These are **additive** to built-in defaults and do not replace them.\n\n• Examples: `homeassistant.components.zha*`, `custom_components.logger_manager*`, `asyncio`\n\n⚠️ Avoid overly broad patterns like `*` — this may list thousands of loggers and impact performance.",
+        "description": "You can exend the list of loggers availible in the UI by adding logger names or name pattern below. Enter as a YAML list (one per line). Supports glob wildcards (`*`, `?`).\n\n**Examples:**\n```yaml\n- \"homeassistant.components.zha*\"\n- \"asyncio\"\n- \"*http*\"\n```\n\n⚠️ Avoid overly broad patterns like `*` — this may list thousands of loggers and impact performance.",
         "data": {
           "extra_filter_patterns": "Additional patterns (one per line)"
         }

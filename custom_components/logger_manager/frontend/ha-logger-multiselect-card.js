@@ -581,6 +581,7 @@ class HaLoggerMultiselectCard extends HTMLElement {
           white-space: nowrap;
           flex: 1;
           text-align: right;
+          direction: rtl;
         }
 
         .clear-all-button {

@@ -67,7 +67,7 @@ class LoggerManagerOptionsFlowHandler(config_entries.OptionsFlow):
                 )
 
         # Show the form
-        current_extras = entry.options.get(CONF_FILTER_PATTERNS, [])
+        current_extras = self.config_entry.options.get(CONF_FILTER_PATTERNS, [])
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
