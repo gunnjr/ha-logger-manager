@@ -18,9 +18,25 @@ A Home Assistant integration for managing logging levels
 
 ---
 
+## Version 1.1.1
+
+### What's New
+
+1. **Bug Fix:**  
+   - Fixed issue where pressing return on the config screen submitted the form instead of allowing multiple lines. You can now enter multiple patterns as a YAML list.
+
+2. **Documentation:**  
+   - Refreshed README file for clarity and accuracy.
+
+3. **Usability:**  
+   - Logger names in the selection bin are now right-justified, making it easier to see the most relevant part of long logger names.
+
+---
+
 ## Overview
 
 Logger Manager aims to solve a common frustration for Home Assistant developers and power users: **managing logging levels is tedious**.
+
 ## Target Users
 **Power Home Assistant users** who need to leverage HA debug logging for:
 - Custom integration development
@@ -91,6 +107,7 @@ The UI is the primarily intended value of this integration, supported by the und
 - Searchable multi-select dropdown of available loggers
 - Easy logger level changes with visual feedback (Critical, Error, Warning, Info, Debug, Notset)
 - Bulk operations - modify multiple loggers at once
+- **Logger names in the selection bin are now right-justified for better readability**
 
 <table>
 <tr>
@@ -128,25 +145,20 @@ data:
 ```
 
 ### Availible loggers: Common Logger Names
-The list of availible loggers is currenly contrained to those for envisioned usecases. The critera is currently hardcoded as follows. The developer intends to make this configurable. 
-### 1. Core integrations:
+The list of availible loggers is currenly contrained to those for envisioned usecases. The critera is currently hardcoded as follows. The developer intends to make this configurable.
+### 1. Core integrations
 Loggers with names of containing: `homeassistant`
 Examples: `homeassistant.components.zha`, `homeassistant.components.mqtt`
 
-### 2. Custom integrations:
+### 2. Custom integrations
 Loggers with names containing: `custom_components`
 Examples: `custom_components.logger_manager`, `custom_components.hacs`
 
-### 3. Commonly used system loggers:
+### 3. Commonly used system loggers
 Loggers with names containing: `asyncio`, `aiohttp`, `urllib3`, `requests`, `aiodns`, `aiofiles`, and `websockets`
 
 ## Anticipated Enhancements
 As time permits, future versions will be enhanced to provide:
-
-### Configurable Logger Discovery
-- Make logger discovery patterns configurable
-- Currently hardcoded to find HA core, custom components, and system loggers
-- Will allow users to add custom patterns for third-party libraries
 
 ### Logger Management UI
 - View all managed loggers in a dedicated card
