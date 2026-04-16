@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.png" alt="Logger Manager Logo" width="200"/>
+<img src="https://raw.githubusercontent.com/gunnjr/ha-logger-manager/main/logo.png" alt="Logger Manager Logo" width="200"/>
 
 # Logger Manager
 
@@ -8,7 +8,7 @@ A Home Assistant integration for managing logging levels
 
 [![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/gunnjr/ha-logger-manager.svg)](https://github.com/gunnjr/ha-logger-manager/releases)
-[![License](https://img.shields.io/github/license/gunnjr/ha-logger-manager.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/gunnjr/ha-logger-manager.svg)](https://github.com/gunnjr/ha-logger-manager/blob/main/LICENSE)
 
 </div>
 
