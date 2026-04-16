@@ -26,17 +26,28 @@ class JSModuleRegistration:
         self.hass = hass
         self.lovelace_data = hass.data.get("lovelace")
 
+    def _get_lovelace_mode(self) -> str | None:
+        """Get Lovelace resource mode, compatible with HA 2026.2+ and older."""
+        if not self.lovelace_data:
+            return None
+        if hasattr(self.lovelace_data, "resource_mode"):
+            return self.lovelace_data.resource_mode
+        if hasattr(self.lovelace_data, "mode"):
+            return self.lovelace_data.mode
+        return None
+
     async def async_register(self) -> None:
         """Register frontend card resources."""
         _LOGGER.debug("Frontend registration starting")
         await self._async_register_path()
 
         # Only attempt automatic resource registration if Lovelace is in storage mode
-        if self.lovelace_data and self.lovelace_data.resource_mode == "storage":
-            _LOGGER.debug("Lovelace resource mode: %s - will attempt automatic resource registration", self.lovelace_data.resource_mode)
+        lovelace_mode = self._get_lovelace_mode()
+        if lovelace_mode == "storage":
+            _LOGGER.debug("Lovelace resource mode: %s - will attempt automatic resource registration", lovelace_mode)
             await self._async_wait_for_lovelace_resources()
         else:
-            mode = self.lovelace_data.resource_mode if self.lovelace_data else "not available"
+            mode = lovelace_mode or "not available"
             _LOGGER.info(
                 "Lovelace resource mode: %s - automatic registration skipped. "
                 "Users will need to manually add the card resource.", mode
@@ -108,7 +119,7 @@ class JSModuleRegistration:
             "If you have Logger Manager cards on your dashboards, they will need to be removed manually."
         )
 
-        if not self.lovelace_data or self.lovelace_data.resource_mode != "storage":
+        if self._get_lovelace_mode() != "storage":
             _LOGGER.debug("Lovelace not in storage mode, no resources to unregister")
             return
 

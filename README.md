@@ -18,6 +18,18 @@ A Home Assistant integration for managing logging levels
 
 ---
 
+## Version 1.1.2
+
+### What's New
+
+1. **Bug Fix:**  
+   - Fixed compatibility with Home Assistant 2026.2+. HA renamed `LovelaceData.mode` to `LovelaceData.resource_mode`, which prevented the integration from loading. Thanks to [@bharat](https://github.com/bharat) for the initial fix ([#15](https://github.com/gunnjr/ha-logger-manager/pull/15)).
+
+2. **Backward Compatibility:**  
+   - Lovelace mode detection now supports both old and new HA versions, so the integration works on HA 2024.6+ through current.
+
+---
+
 ## Version 1.1.1
 
 ### What's New
