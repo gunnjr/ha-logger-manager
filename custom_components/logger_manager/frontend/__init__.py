@@ -32,13 +32,13 @@ class JSModuleRegistration:
         await self._async_register_path()
 
         # Only attempt automatic resource registration if Lovelace is in storage mode
-        if self.lovelace_data and self.lovelace_data.mode == "storage":
-            _LOGGER.debug("Lovelace mode: %s - will attempt automatic resource registration", self.lovelace_data.mode)
+        if self.lovelace_data and self.lovelace_data.resource_mode == "storage":
+            _LOGGER.debug("Lovelace resource mode: %s - will attempt automatic resource registration", self.lovelace_data.resource_mode)
             await self._async_wait_for_lovelace_resources()
         else:
-            mode = self.lovelace_data.mode if self.lovelace_data else "not available"
+            mode = self.lovelace_data.resource_mode if self.lovelace_data else "not available"
             _LOGGER.info(
-                "Lovelace mode: %s - automatic registration skipped. "
+                "Lovelace resource mode: %s - automatic registration skipped. "
                 "Users will need to manually add the card resource.", mode
             )
 
@@ -108,7 +108,7 @@ class JSModuleRegistration:
             "If you have Logger Manager cards on your dashboards, they will need to be removed manually."
         )
 
-        if not self.lovelace_data or self.lovelace_data.mode != "storage":
+        if not self.lovelace_data or self.lovelace_data.resource_mode != "storage":
             _LOGGER.debug("Lovelace not in storage mode, no resources to unregister")
             return
 
